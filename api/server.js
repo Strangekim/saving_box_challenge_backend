@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3000;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 app.get("/", (_req, res) => res.json({ ok: true, msg: "API alive" }));
-app.get("/health", (_req, res) => res.json({ status: "잘 되고 있습니다.digh" }));
+app.get("/health", (_req, res) => res.json({ status: "잘 변경 되는지 테스트 합니다." }));
 app.get("/db/ping", async (_req, res) => {
   try {
     const r = await pool.query("select 1 as ok");
