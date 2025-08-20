@@ -1,5 +1,15 @@
 -- 스키마 생성 (없으면)
 CREATE SCHEMA IF NOT EXISTS users;
+-- 스키마 생성 (없으면)
+CREATE SCHEMA IF NOT EXISTS cosmetic_item;
+
+-- 의상 아이템 종류 테이블 생성
+CREATE TABLE cosmetic_item.type (
+    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,  -- 아이템 종류 고유 ID
+    code TEXT UNIQUE NOT NULL,                        -- 종류 코드 (예: character, background, outfit, hat)
+    name TEXT NOT NULL,                               -- 표시명 (예: 캐릭터, 배경, 한벌옷, 모자)
+    created_at TIMESTAMP DEFAULT NOW()                -- 생성일
+);
 
 -- 사용자 대학 테이블 생성
 CREATE TABLE users.university (
@@ -18,6 +28,18 @@ CREATE TABLE users.list (
     created_at TIMESTAMP DEFAULT NOW(),                -- 가입일시
     withdrawalAccountNo VARCHAR(20) UNIQUE NOT NULL    -- 연결 계좌
 );
+
+
+-- 의상 아이템 목록 테이블
+CREATE TABLE cosmetic_item.list (
+    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,   -- 아이템 고유 ID
+    cosmetic_item_type INT REFERENCES cosmetic_item.type(id), -- 아이템 분류 (FK)
+    name VARCHAR(100) NOT NULL,                        -- 아이템 이름
+    description TEXT,                                  -- 설명
+    is_default BOOLEAN DEFAULT FALSE,                  -- 기본 제공 여부
+    created_at TIMESTAMP DEFAULT NOW()                 -- 생성일
+);
+
 
 -- 사용자 업적 달성 추적 테이블
 CREATE TABLE users.metrics (
@@ -45,27 +67,6 @@ CREATE TABLE users.character (
     hat_item_id       INT REFERENCES cosmetic_item.list(id)  -- 장착 모자
 );
 
-
--- 스키마 생성 (없으면)
-CREATE SCHEMA IF NOT EXISTS cosmetic_item;
-
--- 의상 아이템 종류 테이블 생성
-CREATE TABLE cosmetic_item.type (
-    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,  -- 아이템 종류 고유 ID
-    code TEXT UNIQUE NOT NULL,                        -- 종류 코드 (예: character, background, outfit, hat)
-    name TEXT NOT NULL,                               -- 표시명 (예: 캐릭터, 배경, 한벌옷, 모자)
-    created_at TIMESTAMP DEFAULT NOW()                -- 생성일
-);
-
--- 의상 아이템 목록 테이블
-CREATE TABLE cosmetic_item.list (
-    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,   -- 아이템 고유 ID
-    cosmetic_item_type INT REFERENCES cosmetic_item.type(id), -- 아이템 분류 (FK)
-    name VARCHAR(100) NOT NULL,                        -- 아이템 이름
-    description TEXT,                                  -- 설명
-    is_default BOOLEAN DEFAULT FALSE,                  -- 기본 제공 여부
-    created_at TIMESTAMP DEFAULT NOW()                 -- 생성일
-);
 
 -- 스키마 생성 (없으면)
 CREATE SCHEMA IF NOT EXISTS achievement;

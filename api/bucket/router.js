@@ -3,7 +3,7 @@ import { inquireSavingsProducts } from './service.js';
 
 const router = Router();
 
-router.post("/create_list",
+router.get("/create_list",
     inquireSavingsProducts
 )
 

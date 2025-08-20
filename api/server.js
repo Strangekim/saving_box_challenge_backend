@@ -1,27 +1,24 @@
 import express from "express";
-import pkg from "pg";
-import bucketRouter from './router/bucket/router.js';
-const { Pool } = pkg;
+import bucketRouter from './bucket/router.js';
+import { ping, query } from "./database/postgreSQL.js";
 
 const app = express();
 
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 app.get("/", (_req, res) => res.json({ ok: true, msg: "API alasdasdive" }));
 
 app.get("/health", (_req, res) => res.json({ status: "force push 를 막겠습니다." }));
+
 app.get("/db/ping", async (_req, res) => {
-  try {
-    const r = await pool.query("select 1 as ok");
-    res.json({ db: "ok", result: r.rows[0] });
-  } catch (e) {
-    res.status(500).json({ db: "fail", error: String(e) });
+  try { 
+    res.json({ db: "ok", result: await ping() }); 
+  } catch (e) { 
+    res.status(500).json({ db: "fail", error: String(e) }); 
   }
 });
-
 app.use("/bucket", bucketRouter)
 
 // ============== 공통 에러 핸들러 ===========
@@ -40,5 +37,7 @@ app.use((req, res, next) => {
   });
 });
 
+const nowDate = new Date(Date.now());
+
 app.listen(PORT, "0.0.0.0", () => 
-  console.log(`${PORT}번 포트에서 웹 서버 실행 중 입니다.`));
+  console.log(`${PORT}번 포트에서 웹 서버 실행 중 입니다. ${nowDate}`));
