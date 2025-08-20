@@ -1,14 +1,23 @@
 import { Pool } from "pg";
 
-const Pool = pkg
+const {
+  POSTGRES_USER,
+  POSTGRES_PASSWORD,
+  POSTGRES_DB,
+  POSTGRES_HOST = "db",  
+  POSTGRES_PORT = "5432"
+} = process.env;
 
-export const client = new Pool({
-  user: process.env.PGSQL_USER,
-  password: process.env.PGSQL_PW,
-  host: process.env.PGSQL_HOST,
-  database: process.env.PGSQL_DB,
-  port: process.env.PGSQL_PORT,
+export const pool = new Pool({
+  user: POSTGRES_USER,
+  password: POSTGRES_PASSWORD,
+  host: POSTGRES_HOST,
+  database: POSTGRES_DB,
+  port: Number(POSTGRES_PORT),
   max: 10,
 });
 
-client.connect();
+// client.connect();
+
+export const query = (text, params) => pool.query(text, params);
+export const ping = async () => (await pool.query("select 1 as ok")).rows[0];

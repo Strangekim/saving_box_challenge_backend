@@ -1,4 +1,4 @@
-import { shinhanRequest } from '../../externalAPI/makeHeader.js'; // ← .js 확장자
+import { shinhanRequest } from '../externalAPI/makeHeader.js'; // ← .js 확장자
 
 export const inquireSavingsProducts = async (req, res, next) => {  // ← 이름 export
   try {
