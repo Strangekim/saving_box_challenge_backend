@@ -9,7 +9,6 @@ export async function shinhanRequest({ path, json = {}, method = 'POST', timeout
   const endpointName = lastSeg(path);
   const { yyyymmdd, hhmmss } = nowKST8();                    // ← 8자리 날짜 사용
   const dynamicCode = `${hhmmss}${yyyymmdd}${rand6()}`;      // 6 + 8 + 6 = 20
-    console.log(yyyymmdd)
   const body = {
     Header: {
       apiName: endpointName,
