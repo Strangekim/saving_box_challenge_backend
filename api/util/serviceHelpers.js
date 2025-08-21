@@ -1,5 +1,5 @@
-import { shinhanRequest } from "../externalAPI/makeHeader";
-import { trycatchWrapper } from "./trycatchWrapper";
+import { shinhanRequest } from "../externalAPI/makeHeader.js";
+import { trycatchWrapper } from "./trycatchWrapper.js";
 
 /**
  * 신한 API 호출을 위한 공통 서비스 팩토리

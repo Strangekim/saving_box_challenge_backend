@@ -47,6 +47,54 @@ export async function shinhanRequest({ path, json = {}, method = 'POST', timeout
   }
 }
 
+// 유저키와 함꼐 요청 보낼대
+export async function shinhanRequestWithUser({ path, json = {}, userKey, method = 'POST', timeoutMs = 10_000 }) {
+  const base = envAny('SHINHAN_URL', 'shinhanUrl');
+  const url = joinUrl(base, path);
+
+  const endpointName = lastSeg(path);
+  const { yyyymmdd, hhmmss } = nowKST8();
+  const dynamicCode = `${hhmmss}${yyyymmdd}${rand6()}`;
+
+  const body = {
+    Header: {
+      apiName: endpointName,
+      transmissionDate: yyyymmdd,
+      transmissionTime: hhmmss,
+      institutionCode: envAny('INSTITUTION_CODE', 'institutionCode'),
+      fintechAppNo: envAny('FINTECH_APP_NO', 'fintechAppNo'),
+      apiServiceCode: endpointName,
+      institutionTransactionUniqueNo: dynamicCode,
+      apiKey: envAny('SHINHAN_API_KEY', 'API_KEY'),
+      userKey: userKey  // ← 추가된 부분
+    },
+    ...json
+  };
+
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(body),
+      signal: ctrl.signal
+    });
+
+    const text = await res.text();
+    if (!res.ok) {
+      const err = new Error(`HTTP ${res.status} ${res.statusText} :: ${text.slice(0, 300)}`);
+      err.status = res.status;
+      err.body = text;
+      throw err;
+    }
+    return text ? JSON.parse(text) : null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /* ---------------- helpers ---------------- */
 function envAny(...keys) {
   for (const k of keys) {
