@@ -14,12 +14,15 @@ export const savingsSchemas = {
     accountTypeUniqueNo: Joi.string()
       .trim()
       .pattern(/^[0-9]{3}-[0-9]-[A-Za-z0-9]{8,}$/) // 예: 001-3-29802e64e42943
-      .messages('accountTypeUniqueNo 형식이 올바르지 않습니다.')
+      .messages({
+        'string.pattern.base': 'accountTypeUniqueNo 형식이 올바르지 않습니다.'
+      })
       .required(),
 
     // 목표 금액/일자
     target_amount: Joi.number().integer().min(10_000).max(1_000_000_000).required(),
-    subscriptionPeriod: Joi.number().integer().min(1),
+    target_date: Joi.date().iso().min('now').required(), // 'YYYY-MM-DD' 가능
+
     // 공개 여부 (문자 "TRUE"/"FALSE"도 허용)
     is_public: Joi.boolean()
       .truthy('TRUE', 'true', '1', 'Y', 'YES')
@@ -27,7 +30,7 @@ export const savingsSchemas = {
       .default(false),
 
     // 납입 주기
-    deposit_cycle: Joi.string().valid('daily', 'weekly', 'monthly').default('daily'),
+    deposit_cycle: Joi.string().valid('daily', 'weekly', 'monthly').default('monthly'),
 
     // 아바타/코스메틱 아이템 (선택)
     character_item_id: Joi.number().integer().positive().required(),
@@ -45,7 +48,7 @@ export const savingsSchemas = {
   }).min(1),
 
   bucketComment : Joi.object({
-    content: Joi.string().trim().min().max(500).required().messages({
+    content: Joi.string().trim().min(1).max(500).required().messages({
       'any.required': 'content는 필수입니다.',
       'string.base': 'content는 문자열이어야 합니다.',
       'string.empty': 'content는 비워둘 수 없습니다.',

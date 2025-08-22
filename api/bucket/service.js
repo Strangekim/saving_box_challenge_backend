@@ -190,3 +190,60 @@ const calculateTotalPayment = (depositCycle, subscriptionPeriodDays) => {
       return periodInDays; // 기본값은 daily
   }
 };
+
+// ============== 적금통 DB 삽입 서비스 ==============
+export const saveBucketToDatabase = async (bucketData, productInfo, accountNo) => {
+  const {
+    userId,
+    name,
+    description,
+    target_amount,
+    deposit_cycle,
+    is_public,
+    character_item_id,
+    outfit_item_id,
+    hat_item_id
+  } = bucketData;
+
+  // 챌린지 상품 여부 추출
+  const isChallenge = extractIsChallengeFromDescription(productInfo.accountDescription);
+  
+  // subscriptionPeriod를 정수로 파싱
+  const subscriptionPeriod = parseInt(productInfo.subscriptionPeriod);
+  
+  // total_payment 계산 (일 단위 기준)
+  const totalPayment = calculateTotalPayment(deposit_cycle, subscriptionPeriod);
+
+  const insertQuery = `
+    INSERT INTO saving_bucket.list (
+      user_id, accountNo, accountTypeUniqueNo, accountTypeCode,
+      accountName, interestRate, is_challenge, name, description,
+      target_amount, subscriptionPeriod, deposit_cycle, is_public,
+      total_payment, character_item_id, outfit_item_id, hat_item_id
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+    RETURNING *
+  `;
+
+  const values = [
+    userId,
+    accountNo,
+    productInfo.accountTypeUniqueNo,
+    productInfo.accountTypeCode,
+    productInfo.accountName,
+    parseFloat(productInfo.interestRate),
+    isChallenge,
+    name,
+    description,
+    target_amount,
+    subscriptionPeriod, // INT로 파싱된 값
+    deposit_cycle,
+    is_public,
+    totalPayment,
+    character_item_id,
+    outfit_item_id,
+    hat_item_id
+  ];
+
+  const result = await query(insertQuery, values);
+  return result.rows[0];
+};
