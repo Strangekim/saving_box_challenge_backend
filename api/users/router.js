@@ -1,7 +1,11 @@
 import { Router } from 'express';
-import { logIn,signUp,logOut } from './service.js';
 import { validateSchema } from '../util/validateSchema.js';
 import { loginSchema } from './schema.js';
+import { 
+    logIn,
+    signUp,
+    logOut 
+} from './controller.js';
 
 const router = Router();
 

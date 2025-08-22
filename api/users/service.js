@@ -6,138 +6,165 @@ import { shinhanRequestWithUser } from '../externalAPI/makeHeader.js';
 import { generateUniqueNickname } from '../util/nicknameGenerator.js';
 import { encrypt } from '../util/encryption.js';
 
-// 로그인
-export const logIn = trycatchWrapper(async (req, res) => {
-  const { email } = req.body;
+
+// 1. 신한 API: 계정 중복 체크
+export const checkShinhanAccountExists = async (email) => {
+  const apiKey = process.env.SHINHAN_API_KEY;
   
-  // DB에서 사용자 찾기
+  try {
+    const searchResult = await simpleShinhanRequest({
+      path: '/member/search',
+      apiKey,
+      userId: email
+    });
+    
+    // 201 응답이 오면 이미 계정 존재
+    if (searchResult) {
+      throw customError(409, '이미 존재하는 계정입니다');
+    }
+  } catch (error) {
+    // 400 에러가 아니면 다시 throw
+    if (error.status !== 400) {
+      throw error;
+    }
+    // 400 에러면 계정이 없다는 뜻이므로 정상
+  }
+};
+
+// 2. 신한 API: 계정 생성
+export const createShinhanAccount = async (email) => {
+  const apiKey = process.env.SHINHAN_API_KEY;
+  
+  const createResult = await simpleShinhanRequest({
+    path: '/member',
+    apiKey,
+    userId: email
+  });
+  
+  return createResult;
+};
+
+// 3. 신한 API: 계좌 생성
+export const createBankAccount = async (userKey) => {
+  const accountResult = await shinhanRequestWithUser({
+    path: '/edu/demandDeposit/createDemandDepositAccount',
+    userKey,
+    json: {
+      accountTypeUniqueNo: "088-1-782bc8779cb949"
+    }
+  });
+  
+  return accountResult;
+};
+
+// 4. 신한 API: 테스트용 입금
+export const depositWelcomeMoney = async (userKey, accountNo) => {
+  await shinhanRequestWithUser({
+    path: '/edu/demandDeposit/updateDemandDepositAccountDeposit',
+    userKey,
+    json: {
+      accountNo,
+      transactionBalance: "100000000",  // 1억원
+      transactionSummart: "회원가입 축하금, 1억원 입금"
+    }
+  });
+};
+
+// 5. DB: 사용자 기본 정보 생성
+export const createUserData = async (client, userData) => {
+  const { email, nickname, encryptedUserKey, accountNo, universityId } = userData;
+  
+  const dbResult = await client.query(
+    `INSERT INTO users.list (email, nickname, userKey, withdrawalAccountNo, university_id) 
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [email, nickname, encryptedUserKey, accountNo, universityId]
+  );
+  
+  return dbResult.rows[0];
+};
+
+// 6. DB: 사용자 업적 추적 테이블 초기화
+export const initializeUserMetrics = async (client, userId) => {
+  await client.query(
+    `INSERT INTO users.metrics (user_id) VALUES ($1)`,
+    [userId]
+  );
+};
+
+// 7. DB: 기본 아이템 지급 및 장착
+export const setupDefaultItems = async (client, userId) => {
+  // 기본 아이템들 조회
+  const defaultItems = await client.query(
+    `SELECT id, cosmetic_item_type 
+     FROM cosmetic_item.list 
+     WHERE is_default = true`
+  );
+  
+  // 타입별로 분류
+  const characterId = defaultItems.rows.find(item => item.cosmetic_item_type === 1)?.id;
+  const outfitId = defaultItems.rows.find(item => item.cosmetic_item_type === 2)?.id;
+  const hatId = defaultItems.rows.find(item => item.cosmetic_item_type === 3)?.id;
+  
+  // 가방에 기본 아이템들 추가
+  await client.query(
+    `INSERT INTO users.inventory (user_id, item_id, item_type_id)
+     SELECT $1, id, cosmetic_item_type
+     FROM cosmetic_item.list 
+     WHERE is_default = true`,
+    [userId]
+  );
+  
+  // 캐릭터에 기본 아이템들 장착
+  await client.query(
+    `INSERT INTO users.character (user_id, character_item_id, outfit_item_id, hat_item_id) 
+     VALUES ($1, $2, $3, $4)`,
+    [userId, characterId, outfitId, hatId]
+  );
+};
+
+// ============== 로그인 관련 서비스 ==============
+
+// DB: 사용자 조회
+export const findUserByEmail = async (email) => {
   const result = await query('SELECT * FROM users.list WHERE email = $1', [email]);
   
   if (result.rows.length === 0) {
     throw customError(404, '사용자를 찾을 수 없습니다');
   }
   
-  const user = result.rows[0];
-  req.session.userId = user.id;  // 세션에 사용자 ID 저장
-  
-  res.json({ message: '로그인 성공', user: { id: user.id, email: user.email } });
-});
+  return result.rows[0];
+};
 
-// 로그아웃
-export const logOut = trycatchWrapper(async (req, res) => {
-  // 세션이 존재하는지 확인
+// 세션: 사용자 세션 생성
+export const createUserSession = (req, user) => {
+  req.session.userId = user.id;
+  return {
+    id: user.id,
+    email: user.email,
+    nickname: user.nickname
+  };
+};
+
+// ============== 로그아웃 관련 서비스 ==============
+
+// 세션: 세션 확인
+export const checkUserSession = (req) => {
   if (!req.session.userId) {
-    return res.status(400).json({
-      message: '이미 로그아웃 상태입니다'
-    });
+    throw customError(400, '이미 로그아웃 상태입니다');
   }
+};
 
-  // 세션 삭제
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({
-        message: '로그아웃 처리 중 오류가 발생했습니다'
-      });
-    }
-
-    // 세션 쿠키도 삭제
-    res.clearCookie('connect.sid'); // express-session 기본 쿠키명
-    
-    res.status(200).json({
-      message: '로그아웃이 완료되었습니다'
+// 11. 세션: 세션 삭제
+export const destroyUserSession = (req, res) => {
+  return new Promise((resolve, reject) => {
+    req.session.destroy((err) => {
+      if (err) {
+        reject(new Error('로그아웃 처리 중 오류가 발생했습니다'));
+        return;
+      }
+      
+      res.clearCookie('connect.sid');
+      resolve();
     });
   });
-});
-
-
-// 회원가입
-export const signUp = trycatchWrapper(async (req, res) => {
-  const { email } = req.body;
-  const apiKey = process.env.API_KEY;
-
-  try {
-    // 1. 먼저 /member/search로 중복 체크
-    const searchResult = await simpleShinhanRequest({
-      path: '/member/search',
-      apiKey,
-      userId: email
-    });
-
-    // 201 응답이 왔다는 것은 이미 계정이 존재한다는 뜻
-    if (searchResult) {
-      throw customError(409, '이미 존재하는 계정입니다');
-    }
-
-  } catch (error) {
-    // 400 에러면 계정이 없다는 뜻이므로 계정 생성 진행
-    if (error.status === 400) {
-      
-      // 2. /member로 계정 생성 요청
-      const createResult = await simpleShinhanRequest({
-        path: '/member',
-        apiKey,
-        userId: email
-      });
-
-      // 3. userKey로 계좌 생성
-      const accountResult = await shinhanRequestWithUser({
-        path: '/edu/demandDeposit/createDemandDepositAccount',
-        userKey: createResult.userKey,
-        json: {
-          accountTypeUniqueNo: "088-1-782bc8779cb949"
-        }
-      });
-
-      // 4. 랜덤 닉네임 생성 (중복 체크 포함)
-      const nickname = await generateUniqueNickname();
-
-      // 5. 랜덤 대학 선택
-      const universityResult = await query(
-        'SELECT id FROM users.university ORDER BY RANDOM() LIMIT 1'
-      );
-      const randomUniversityId = universityResult.rows[0].id;
-
-      // 6. 테스트용 1억원 입금
-      await shinhanRequestWithUser({
-        path: '/edu/demandDeposit/updateDemandDepositAccountDeposit',
-        userKey: createResult.userKey,
-        json: {
-          accountNo: accountResult.REC.accountNo,
-          transactionBalance: "100000000",  // 1억원
-          transactionSummart: "회원가입 축하금, 1억원 입금"
-        }
-      });
-
-      // 6. userKey 암호화
-      const encryptedUserKey = encrypt(createResult.userKey);
-
-      // 8. DB에 사용자 정보와 계좌번호 저장 (대학 정보 포함 조인)
-     const dbResult = await query(
-     `INSERT INTO users.list (email, nickname, userKey, withdrawalAccountNo, university_id) 
-      VALUES ($1, $2, $3, $4, $5) RETURNING ...`,
-        [
-            createResult.userId, 
-            nickname,  
-            encryptedUserKey,
-            accountResult.REC.accountNo,
-            randomUniversityId  // ← 이미 포함되어 있음
-        ]
-     );
-
-      return res.status(201).json({
-        message: '회원가입 및 계좌 생성이 완료되었습니다',
-        user: {
-          id: dbResult.rows[0].id,
-          nickname : dbResult.rows[0].nickname,
-          email: dbResult.rows[0].email,
-          userKey: dbResult.rows[0].userkey,
-          accountNo: dbResult.rows[0].withdrawalaccountno,
-          university: universityInfo.rows[0].name
-        }
-      });
-
-    } else {
-      throw error;
-    }
-  }
-});
+};
