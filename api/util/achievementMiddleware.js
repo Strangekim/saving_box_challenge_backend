@@ -1,7 +1,13 @@
 import { processUserAction } from './achievementService.js';
 
+
 // ============== 업적 처리 후 응답 가로채기 함수 ==============
-export const handleAchievementResponse = async (req, res, actionType, actionData = {}) => {
+export const handleAchievementResponse = async (req, res, actionType, actionData = {}, originalResponseData = null) => {
+  // 이미 응답이 전송되었는지 확인
+  if (res.headersSent) {
+    return false;
+  }
+  
   // 로그인된 사용자만 업적 처리
   if (!req.session?.userId) {
     return false;
@@ -14,9 +20,15 @@ export const handleAchievementResponse = async (req, res, actionType, actionData
     const achievementResult = await processUserAction(userId, actionType, actionData);
     
     if (achievementResult.newAchievements.length > 0) {
-      // 🎉 업적 달성시 205 Reset Content로 응답 변경
+      // 다시 한 번 응답 상태 확인
+      if (res.headersSent) {
+        return false;
+      }
+      
+      // 기본 응답 데이터와 업적 정보를 합친 응답
       const achievementResponse = {
-        success: true,
+        // 원래 응답 데이터가 있으면 포함
+        ...(originalResponseData || { success: true }),
         type: 'achievement_unlocked',
         message: '축하합니다! 새로운 업적을 달성했습니다!',
         achievements: {
@@ -28,6 +40,7 @@ export const handleAchievementResponse = async (req, res, actionType, actionData
             id: unlock.achievement.id,
             title: unlock.achievement.title,
             description: unlock.achievement.description,
+            code: unlock.achievement.code,
             rewards: unlock.rewards.map(reward => ({
               itemId: reward.item_id,
               itemName: reward.item_name,
@@ -37,27 +50,33 @@ export const handleAchievementResponse = async (req, res, actionType, actionData
         }
       };
       
-      res.status(205).json(achievementResponse);
-      return true; // 응답이 가로채졌음을 알림
+      try {
+        res.status(202).json(achievementResponse);
+        return true; // 응답이 가로채졌음을 알림
+      } catch (responseError) {
+        console.error('응답 전송 중 오류:', responseError);
+        return false;
+      }
     }
     
     return false; // 업적이 없어서 일반 응답 진행
     
   } catch (error) {
-    console.error('Achievement processing error:', error);
+    console.error('업적 처리 오류:', error);
     // 업적 처리 실패해도 원본 응답은 그대로 진행
     return false;
   }
 };
 
+
 // ============== 액션별 헬퍼 함수들 ==============
 
 // 적금통 생성 업적 처리
-export const handleBucketCreationAchievement = async (req, res, bucketData) => {
+export const handleBucketCreationAchievement = async (req, res, bucketData, responseData = null) => {
   return handleAchievementResponse(req, res, 'create_bucket', {
     bucketId: bucketData.id,
     targetAmount: req.body.target_amount
-  });
+  }, responseData);
 };
 
 // 좋아요 업적 처리

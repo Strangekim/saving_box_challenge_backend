@@ -10,9 +10,21 @@ import {
 
 // ============== 예금+적금 통합 상품 목록 조회 ==============
 export const inquireAllProducts = trycatchWrapper(async (req, res) => {
-  const products = await getAllProducts();
+  const allProducts = await getAllProducts();
   
-  res.status(200).json(products);
+  // 제외할 상품들
+  const excludedProducts = [
+    "001",  // 한국은행 bankCode
+    "088-3-e4b8d1dbedd141"  // 특정 적금 상품 accountTypeUniqueNo
+  ];
+  
+  // 한국은행(bankCode: "001") 및 특정 적금 상품 제외
+  const filteredProducts = allProducts.filter(product => 
+    product.bankCode !== "001" && 
+    product.accountTypeUniqueNo !== "088-3-e4b8d1dbedd141"
+  );
+  
+  res.status(200).json(filteredProducts);
 });
 
 // ============== 적금통 생성 ==============
@@ -78,7 +90,16 @@ export const createBucket = trycatchWrapper(async (req, res) => {
   // 6. 업적 처리 및 응답 가로채기 시도 (기존 데이터 포함)
   const achievementHandled = await handleBucketCreationAchievement(req, res, savedBucket, responseData);
   
+  
   if (!achievementHandled) {
-    res.status(201).json(responseData);
+    console.log('📤 일반 응답 전송 시도 (201)');
+    if (res.headersSent) {
+      console.log('⚠️ 응답이 이미 전송됨! 201 응답 불가');
+    } else {
+      res.status(201).json(responseData);
+      console.log('✅ 201 응답 전송 완료');
+    }
+  } else {
+    console.log('🎉 업적 응답이 전송됨 - 일반 응답 생략');
   }
 });
