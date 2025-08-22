@@ -150,8 +150,8 @@ CREATE TABLE saving_bucket.list (
     name                 VARCHAR(100) NOT NULL,                            -- 적금통 제목
     description          TEXT,                                             -- 설명
     target_amount        INT NOT NULL CHECK (target_amount >= 0),          -- 목표 금액(원, 음수 금지)
-    target_date          DATE NOT NULL,                                    -- 만기일
-
+    subscriptionPeriod   INT NOT NULL,                                     -- 가입 기간
+    
     deposit_cycle        TEXT CHECK (deposit_cycle IN ('daily','weekly','monthly')), -- 적립 주기
     is_public            BOOLEAN DEFAULT TRUE,                             -- 공개 여부
 
@@ -203,3 +203,44 @@ CREATE TABLE saving_bucket.comment (
 
     created_at TIMESTAMP DEFAULT NOW()                       -- 작성 시각
 );
+
+[
+    {
+        "accountTypeUniqueNo":"001-3-29802e64e42943",
+        "bankCode":"088",
+        "bankName":"신한은행",
+        "accountTypeCode":"2",
+        "accountTypeName":"예금",
+        "accountName":"헤이영 우대금리 적금통",
+        "accountDescription": "
+        {
+            'is_challenge' : 'false', 
+            'description' : '헤이영 우대금리가 적용되는 기본 예금입니다.'
+        }
+        ",
+        "subscriptionPeriod":"50",
+        "minSubscriptionBalance":"10000",
+        "maxSubscriptionBalance":"1000000",
+        "interestRate":"10",
+        "rateDescription":"10%의 이자를 지급합니다."
+    },
+    {
+        "accountTypeUniqueNo":"088-3-e4b8d1dbedd141",
+        "bankCode":"088",
+        "bankName":"신한은행",
+        "accountTypeCode":"3",
+        "accountTypeName":"적금",
+        "accountName":"2025 여름방학 적금 챌린지",
+        "accountDescription": "
+        {
+            'is_challenge' : 'true', 
+            'description' : '신한은행 여름방학 적금 챌린지 입니다. 챌린지 1위 대학에는 2학기 대학 행사를 신한은행에서 지원합니다.'
+        }",
+        "subscriptionPeriod":"50",
+        "minSubscriptionBalance":"10000",
+        "maxSubscriptionBalance":"500000",
+        "interestRate":"10",
+        "rateDescription":"10% 우대 금리를 적용합니다.
+        "
+    }
+]

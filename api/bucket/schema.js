@@ -10,7 +10,6 @@ export const savingsSchemas = {
     name: Joi.string().trim().min(2).max(30).required(),
     description: Joi.string().trim().max(500).allow(''),
 
-
     // 계좌/상품 식별자 (형식은 예시 기반, 너무 빡세지 않게 제한)
     accountTypeUniqueNo: Joi.string()
       .trim()
@@ -20,7 +19,7 @@ export const savingsSchemas = {
 
     // 목표 금액/일자
     target_amount: Joi.number().integer().min(10_000).max(1_000_000_000).required(),
-    target_date: Joi.date().iso().min('now').required(), // 'YYYY-MM-DD' 가능
+    subscriptionPeriod: Joi.number().integer().min(1), // 'YYYY-MM-DD' 가능
 
     // 공개 여부 (문자 "TRUE"/"FALSE"도 허용)
     is_public: Joi.boolean()

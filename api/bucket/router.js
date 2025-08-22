@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { inquireSavingsProducts } from './service.js';
+import { inquireAllProducts } from './controller';
 
 const router = Router();
 
 router.get("/create_list",
-    inquireSavingsProducts
+    inquireAllProducts
 )
 
 export default router;
