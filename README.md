@@ -11,3 +11,22 @@
 | 2025-08-26    | 내용6 |
 | 2025-08-27    | 내용7 |
 | 2025-08-28    | 내용8 |
+
+
+
+
+
+
+
+
+### 문제 상황 정리
+
+- API 에서 받아온 userKey, 그냥 DB에 저장해놓아도 괜찮은건가?
+- 현재 테이블 정규화가 너무 많이 되어있는 느낌
+- 일단 업적 달성 요건은 metrics 테이블로 일종의 캐싱을 구현했는데 여기에 데이터를 어떻게 쌓을건지
+- 아마도 트리거 or 그냥 트랜잭션
+
+docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
+ALTER TABLE saving_bucket.list DROP COLUMN target_date;
+ALTER TABLE saving_bucket.list ADD COLUMN subscriptionPeriod INT NOT NULL;
+"
