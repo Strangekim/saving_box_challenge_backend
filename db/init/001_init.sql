@@ -23,7 +23,7 @@ CREATE TABLE users.list (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,   -- 유저 고유 ID (자동 증가)
     email VARCHAR(100) UNIQUE NOT NULL,                -- 사용자 이메일
     nickname VARCHAR(10) NOT NULL,                     -- 닉네임
-    userKey VARCHAR(60),                               -- 금융 API에서 발급해주는 고유 키
+    userKey VARCHAR(200),                               -- 금융 API에서 발급해주는 고유 키
     university_id INT REFERENCES users.university(id), -- 소속 대학 ID (FK)
     created_at TIMESTAMP DEFAULT NOW(),                -- 가입일시
     withdrawalAccountNo VARCHAR(20) UNIQUE NOT NULL    -- 연결 계좌

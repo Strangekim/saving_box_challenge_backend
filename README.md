@@ -26,7 +26,4 @@
 - 일단 업적 달성 요건은 metrics 테이블로 일종의 캐싱을 구현했는데 여기에 데이터를 어떻게 쌓을건지
 - 아마도 트리거 or 그냥 트랜잭션
 
-docker compose exec db psql -U $POSTGRES_USER -d $POSTGRES_DB -c "
-ALTER TABLE saving_bucket.list DROP COLUMN target_date;
-ALTER TABLE saving_bucket.list ADD COLUMN subscriptionPeriod INT NOT NULL;
-"
+- 현재 각종 트랜잭션 처리 불안함
