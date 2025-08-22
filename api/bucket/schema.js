@@ -29,7 +29,7 @@ export const savingsSchemas = {
       .default(false),
 
     // 납입 주기
-    deposit_cycle: Joi.string().valid('daily', 'weekly', 'monthly').default('monthly'),
+    deposit_cycle: Joi.string().valid('daily', 'weekly', 'monthly').default('daily'),
 
     // 아바타/코스메틱 아이템 (선택)
     character_item_id: Joi.number().integer().positive().required(),
@@ -54,5 +54,12 @@ export const savingsSchemas = {
       'string.min': 'content는 최소 1자 이상이어야 합니다.',
       'string.max': 'content는 최대 500자까지 가능합니다.',
     })
-  })
+  }),
+
+  // 목록 조회 쿼리 검증
+  listQuery: Joi.object({
+    category: Joi.string().valid('recently').default('recently'),
+    page: Joi.number().integer().min(1).default(1)
+  }),
+
 };

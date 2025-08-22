@@ -5,7 +5,12 @@ import {
     validateBucketCreation,
     createSavingsAccount,
     validateUserItems,
-    saveBucketToDatabase
+    saveBucketToDatabase,
+    validateBucketOwnership,
+    updateBucketInDatabase,
+    getBucketList,
+    getBucketListCount,
+    formatBucketListResponse
 } from './service.js';
 
 // ============== 예금+적금 통합 상품 목록 조회 ==============
@@ -102,4 +107,70 @@ export const createBucket = trycatchWrapper(async (req, res) => {
   } else {
     console.log('🎉 업적 응답이 전송됨 - 일반 응답 생략');
   }
+});
+
+// ============== 적금통 수정 ==============
+export const updateBucket = trycatchWrapper(async (req, res) => {
+  const bucketId = parseInt(req.params.id);
+  const userId = req.session.userId;
+  const updateData = req.body;
+  
+  // 1. 적금통 존재 및 소유권 확인
+  await validateBucketOwnership(bucketId, userId);
+  
+  // 2. 아이템 관련 업데이트가 있는 경우에만 검증
+  const hasItemUpdates = updateData.character_item_id || 
+                        updateData.outfit_item_id || 
+                        updateData.hat_item_id;
+  
+  if (hasItemUpdates) {
+    // 모든 아이템 ID가 제공되었는지 확인
+    if (!updateData.character_item_id || !updateData.outfit_item_id || !updateData.hat_item_id) {
+      throw customError(400, '아이템을 변경할 때는 캐릭터, 한벌옷, 모자를 모두 선택해야 합니다.');
+    }
+    
+    // 3. 사용자 아이템 보유 검증 (기존 함수 재사용)
+    await validateUserItems(
+      userId, 
+      updateData.character_item_id, 
+      updateData.outfit_item_id, 
+      updateData.hat_item_id
+    );
+  }
+  
+  // 4. 적금통 정보 업데이트
+  const updatedBucket = await updateBucketInDatabase(bucketId, updateData);
+  
+  // 5. 성공 응답
+  res.status(200).json({
+    success: true,
+    message: '적금통 정보가 성공적으로 수정되었습니다.',
+    bucket: {
+      id: updatedBucket.id,
+      name: updatedBucket.name,
+      description: updatedBucket.description,
+      character_item_id: updatedBucket.character_item_id,
+      outfit_item_id: updatedBucket.outfit_item_id,
+      hat_item_id: updatedBucket.hat_item_id
+    }
+  });
+});
+
+
+// ============== 적금통 목록 조회 ==============
+export const getBucketListController = trycatchWrapper(async (req, res) => {
+  const { category, page } = req.query;
+  const userId = req.session?.userId || null; // 로그인한 경우만 사용자 ID 가져오기
+  
+  // 1. 적금통 목록 조회
+  const buckets = await getBucketList(category, page, userId);
+  
+  // 2. 전체 개수 조회
+  const total = await getBucketListCount();
+  
+  // 3. 응답 데이터 포맷팅
+  const response = formatBucketListResponse(buckets, total, page);
+  
+  // 4. 성공 응답
+  res.status(200).json(response);
 });
