@@ -19,7 +19,7 @@ export const savingsSchemas = {
 
     // 목표 금액/일자
     target_amount: Joi.number().integer().min(10_000).max(1_000_000_000).required(),
-    subscriptionPeriod: Joi.number().integer().min(1), // 'YYYY-MM-DD' 가능
+    subscriptionPeriod: Joi.number().integer().min(1),
 
     // 공개 여부 (문자 "TRUE"/"FALSE"도 허용)
     is_public: Joi.boolean()
@@ -28,7 +28,7 @@ export const savingsSchemas = {
       .default(false),
 
     // 납입 주기
-    deposit_cycle: Joi.string().valid('daily', 'weekly', 'monthly').default('monthly'),
+    deposit_cycle: Joi.string().valid('daily', 'weekly', 'monthly').default('daily'),
 
     // 아바타/코스메틱 아이템 (선택)
     character_item_id: Joi.number().integer().positive().required(),
