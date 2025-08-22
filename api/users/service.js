@@ -9,7 +9,7 @@ import { encrypt } from '../util/encryption.js';
 
 // 1. 신한 API: 계정 중복 체크
 export const checkShinhanAccountExists = async (email) => {
-  const apiKey = process.env.SHINHAN_API_KEY;
+  const apiKey = process.env.API_KEY;
   
   try {
     const searchResult = await simpleShinhanRequest({
@@ -33,7 +33,7 @@ export const checkShinhanAccountExists = async (email) => {
 
 // 2. 신한 API: 계정 생성
 export const createShinhanAccount = async (email) => {
-  const apiKey = process.env.SHINHAN_API_KEY;
+  const apiKey = process.env.API_KEY;
   
   const createResult = await simpleShinhanRequest({
     path: '/member',

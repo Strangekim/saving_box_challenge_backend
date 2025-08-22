@@ -10,7 +10,7 @@ export async function simpleShinhanRequest({ path, apiKey, userId, timeoutMs = 1
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
 
-  console.log(`들어왔습니다.${JSON.stringify(body)}`)
+  console.log(`들어왔습니다.${JSON.stringify(body.apiKey)}`)
   try {
     const res = await fetch(url, {
       method: 'POST',

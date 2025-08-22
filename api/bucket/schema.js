@@ -19,9 +19,8 @@ export const savingsSchemas = {
       })
       .required(),
 
-    // 목표 금액/일자
+    // 목표 금액 (target_date 제거, subscriptionPeriod는 상품에서 자동 설정)
     target_amount: Joi.number().integer().min(10_000).max(1_000_000_000).required(),
-    target_date: Joi.date().iso().min('now').required(), // 'YYYY-MM-DD' 가능
 
     // 공개 여부 (문자 "TRUE"/"FALSE"도 허용)
     is_public: Joi.boolean()

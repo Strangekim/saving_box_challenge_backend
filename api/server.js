@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from "express";
 import bucketRouter from './bucket/router.js';
 import usersRouter from './users/router.js';
