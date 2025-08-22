@@ -20,7 +20,6 @@ export const savingsSchemas = {
     // 목표 금액/일자
     target_amount: Joi.number().integer().min(10_000).max(1_000_000_000).required(),
     subscriptionPeriod: Joi.number().integer().min(1),
-
     // 공개 여부 (문자 "TRUE"/"FALSE"도 허용)
     is_public: Joi.boolean()
       .truthy('TRUE', 'true', '1', 'Y', 'YES')
