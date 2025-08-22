@@ -1,7 +1,17 @@
 import { Router } from 'express';
-import { inquireAllProducts, createBucket } from './controller.js';
-import { validateSchema } from '../util/validateSchema.js';
-import { savingsSchemas } from './schema.js';
+import { 
+  inquireAllProducts, 
+  createBucket,
+  updateBucket,
+  getBucketListController
+ } from './controller.js';
+import { 
+  validateSchema, 
+  validateQuery, 
+  validateParams, 
+  validate 
+} from '../util/validateSchema.js';
+import { savingsSchemas,idParam } from './schema.js';
 import { requireAuth } from '../util/auth.js';
 
 const router = Router();
@@ -16,6 +26,22 @@ router.post("/create",
   requireAuth,
   validateSchema(savingsSchemas.createBucket),
   createBucket
+);
+
+// 적금통 수정
+router.patch("/:id", 
+  requireAuth,
+  validate({
+    params: idParam(),
+    body: savingsSchemas.updateBucket
+  }),
+  updateBucket
+);
+
+// 적금통 목록 조회
+router.get("/", 
+  validateQuery(savingsSchemas.listQuery),
+  getBucketListController
 );
 
 export default router;

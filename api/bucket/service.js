@@ -247,3 +247,229 @@ export const saveBucketToDatabase = async (bucketData, productInfo, accountNo) =
   const result = await query(insertQuery, values);
   return result.rows[0];
 };
+
+// ============== 적금통 존재 및 소유권 확인 서비스 ==============
+export const validateBucketOwnership = async (bucketId, userId) => {
+  const result = await query(
+    'SELECT id, user_id, status FROM saving_bucket.list WHERE id = $1',
+    [bucketId]
+  );
+  
+  if (result.rows.length === 0) {
+    throw customError(404, '존재하지 않는 적금통입니다.');
+  }
+  
+  const bucket = result.rows[0];
+  
+  if (bucket.user_id !== userId) {
+    throw customError(403, '수정 권한이 없습니다.');
+  }
+  
+  if (bucket.status !== 'in_progress') {
+    throw customError(400, '진행 중인 적금통만 수정할 수 있습니다.');
+  }
+  
+  return bucket;
+};
+
+// ============== 적금통 정보 업데이트 서비스 ==============
+export const updateBucketInDatabase = async (bucketId, updateData) => {
+  const updateFields = [];
+  const values = [];
+  let paramIndex = 1;
+  
+  // 동적으로 UPDATE 쿼리 생성
+  for (const [field, value] of Object.entries(updateData)) {
+    updateFields.push(`${field} = $${paramIndex}`);
+    values.push(value);
+    paramIndex++;
+  }
+  
+  values.push(bucketId); // WHERE 조건용
+  
+  const updateQuery = `
+    UPDATE saving_bucket.list 
+    SET ${updateFields.join(', ')}
+    WHERE id = $${paramIndex}
+    RETURNING *
+  `;
+  
+  const result = await query(updateQuery, values);
+  return result.rows[0];
+};
+
+// ============== 적금통 목록 조회 서비스 ==============
+export const getBucketList = async (category, page, userId = null) => {
+  const limit = 5;
+  const offset = (page - 1) * limit;
+  
+  // 현재 사용자의 좋아요 정보 조인 (로그인한 경우만)
+  const userLikeJoin = userId ? 
+    `LEFT JOIN saving_bucket.like AS user_like 
+     ON sb.id = user_like.bucket_id AND user_like.user_id = $3` : '';
+  
+  const userLikeSelect = userId ? 
+    ', CASE WHEN user_like.id IS NOT NULL THEN true ELSE false END as is_liked' : 
+    ', false as is_liked';
+  
+  // 댓글 수 서브쿼리
+  const commentCountSubquery = `
+    LEFT JOIN (
+      SELECT bucket_id, COUNT(*) as comment_count 
+      FROM saving_bucket.comment 
+      GROUP BY bucket_id
+    ) AS comments ON sb.id = comments.bucket_id
+  `;
+  
+  const sqlQuery  = `
+    SELECT 
+      -- 적금통 기본 정보
+      sb.id,
+      sb.name,
+      sb.description,
+      sb.target_amount,
+      sb.status,
+      sb.is_challenge,
+      sb.like_count,
+      sb.view_count,
+      sb.created_at,
+      
+      -- 금융 정보
+      sb.accountname as account_name,
+      sb.interestrate as interest_rate,
+      sb.subscriptionperiod as subscription_period,
+      sb.deposit_cycle,
+      sb.total_payment,
+      sb.success_payment,
+      sb.last_progress_date,
+      
+      -- 소유자 정보
+      u.id as owner_id,
+      u.nickname as owner_nickname,
+      uni.name as owner_university,
+      
+      -- 소유자 캐릭터 정보
+      uc.character_item_id,
+      uc.outfit_item_id,
+      uc.hat_item_id,
+      char_item.name as character_name,
+      outfit_item.name as outfit_name,
+      hat_item.name as hat_name,
+      
+      -- 댓글 수
+      COALESCE(comments.comment_count, 0) as comment_count
+      
+      ${userLikeSelect}
+      
+    FROM saving_bucket.list AS sb
+    
+    -- 소유자 정보 조인
+    LEFT JOIN users.list AS u ON sb.user_id = u.id
+    LEFT JOIN users.university AS uni ON u.university_id = uni.id
+    
+    -- 소유자 캐릭터 정보 조인
+    LEFT JOIN users.character AS uc ON u.id = uc.user_id
+    LEFT JOIN cosmetic_item.list AS char_item ON uc.character_item_id = char_item.id
+    LEFT JOIN cosmetic_item.list AS outfit_item ON uc.outfit_item_id = outfit_item.id
+    LEFT JOIN cosmetic_item.list AS hat_item ON uc.hat_item_id = hat_item.id
+    
+    -- 댓글 수 조인
+    ${commentCountSubquery}
+    
+    -- 사용자 좋아요 정보 조인 (로그인한 경우만)
+    ${userLikeJoin}
+    
+    WHERE sb.is_public = true 
+      AND sb.status = 'in_progress'
+    
+    ORDER BY sb.created_at DESC
+    
+    LIMIT $1 OFFSET $2
+  `;
+  
+  // 파라미터 설정
+  const params = userId ? [limit, offset, userId] : [limit, offset];
+  
+  const result = await query(sqlQuery, params);
+  return result.rows;
+};
+
+// ============== 전체 개수 조회 서비스 ==============
+export const getBucketListCount = async () => {
+  const countQuery = `
+    SELECT COUNT(*) as total
+    FROM saving_bucket.list 
+    WHERE is_public = true AND status = 'in_progress'
+  `;
+  
+  const result = await query(countQuery);
+  return parseInt(result.rows[0].total);
+};
+
+// ============== 적금통 목록 데이터 포맷팅 서비스 ==============
+export const formatBucketListResponse = (buckets, total, page) => {
+  const limit = 5;
+  const hasNext = (page * limit) < total;
+  
+  const formattedBuckets = buckets.map(bucket => {
+    // 진행률 계산
+    const progressPercentage = bucket.total_payment > 0 
+      ? ((bucket.success_payment / bucket.total_payment) * 100).toFixed(1)
+      : 0;
+    
+    return {
+      id: bucket.id,
+      name: bucket.name,
+      description: bucket.description,
+      target_amount: bucket.target_amount,
+      current_progress: parseFloat(progressPercentage),
+      status: bucket.status,
+      is_challenge: bucket.is_challenge,
+      like_count: bucket.like_count,
+      view_count: bucket.view_count,
+      comment_count: bucket.comment_count,
+      created_at: bucket.created_at,
+      is_liked: bucket.is_liked,
+      
+      // 금융 정보 (밖으로 뺌)
+      account_name: bucket.account_name,
+      interest_rate: bucket.interest_rate,
+      subscription_period: bucket.subscription_period,
+      deposit_cycle: bucket.deposit_cycle,
+      total_payment: bucket.total_payment,
+      success_payment: bucket.success_payment,
+      last_progress_date: bucket.last_progress_date,
+      
+      // 소유자 정보 (캐릭터 포함)
+      owner: {
+        id: bucket.owner_id,
+        nickname: bucket.owner_nickname,
+        university: bucket.owner_university,
+        character: {
+          character_item: {
+            id: bucket.character_item_id,
+            name: bucket.character_name
+          },
+          outfit_item: {
+            id: bucket.outfit_item_id,
+            name: bucket.outfit_name
+          },
+          hat_item: {
+            id: bucket.hat_item_id,
+            name: bucket.hat_name
+          }
+        }
+      }
+    };
+  });
+  
+  return {
+    buckets: formattedBuckets,
+    pagination: {
+      page,
+      limit,
+      total,
+      has_next: hasNext
+    }
+  };
+};
