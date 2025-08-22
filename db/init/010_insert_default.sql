@@ -54,3 +54,39 @@ INSERT INTO achievement.list (code, title, description, condition) VALUES
 ('ACH_FIRST_GET_LIKE', '첫 좋아요 받기', '다른 사용자에게 처음으로 좋아요를 받아보세요.', '{"type":"get_like_sum","value":1}'),
 ('ACH_COMMENT_5', '댓글 5개 작성', '댓글을 5개 작성하면 달성됩니다.', '{"type":"comment_count","value":5}'),
 ('ACH_PUSH_5', '적금 5회 달성', '적금을 총 5회 넣으면 달성됩니다.', '{"type":"bucket_push_count","value":5}');
+
+
+INSERT INTO cosmetic_item.list (cosmetic_item_type, name, description, is_default) VALUES
+(1, '검은 닌자', '그림자 속에서 활동하는 은밀한 닌자', FALSE),
+(2, '왕족 로브', '왕실에서만 입을 수 있는 고급 로브', FALSE),
+(3, '용의 머리장식', '전설적인 용의 힘이 깃든 머리장식', FALSE);
+
+-- 2. 업적별 보상 1:1 매핑 (총 12개 아이템 중 9개 사용, 기본 아이템 3개 제외)
+INSERT INTO achievement.reward (achievement_id, item_id) VALUES
+
+-- 1. ACH_FIRST_BUCKET (첫 적금통 생성) -> 붉은 마법사 캐릭터
+(1, 2),
+
+-- 2. ACH_FIRST_COMMENT (첫 댓글 작성) -> 초록 궁수 캐릭터
+(2, 3),
+
+-- 3. ACH_FIRST_LIKE_GIVEN (첫 좋아요 누르기) -> 은빛 기사 갑옷
+(3, 5),
+
+-- 4. ACH_FIRST_BUCKET_PUSH (첫 적금하기) -> 황금 파티 드레스
+(4, 6),
+
+-- 5. ACH_FIRST_BUCKET_SUCCESS (첫 적금통 성공) -> 마법사의 뾰족 모자
+(5, 8),
+
+-- 6. ACH_FIRST_CHALLENGE (첫 챌린지 성공) -> 깃털 장식 투구
+(6, 9),
+
+-- 7. ACH_FIRST_GET_LIKE (첫 좋아요 받기) -> 검은 닌자 캐릭터 (신규)
+(7, 10),
+
+-- 8. ACH_COMMENT_5 (댓글 5개 작성) -> 왕족 로브 한벌옷 (신규)
+(8, 11),
+
+-- 9. ACH_PUSH_5 (적금 5회 달성) -> 용의 머리장식 모자 (신규)
+(9, 12);

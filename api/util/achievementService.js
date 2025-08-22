@@ -30,6 +30,10 @@ export const updateUserMetrics = async (userId, metricUpdates) => {
 
 // ============== 달성 가능한 업적 확인 ==============
 export const checkAchievements = async (userId, updatedMetrics) => {
+  console.log('🏆 checkAchievements 시작');
+  console.log('👤 userId:', userId);
+  console.log('📊 updatedMetrics:', updatedMetrics);
+  
   // 사용자가 아직 달성하지 않은 업적들 조회
   const unlockedAchievements = await query(`
     SELECT al.* 
@@ -38,19 +42,44 @@ export const checkAchievements = async (userId, updatedMetrics) => {
     WHERE au.id IS NULL AND al.is_active = true
   `, [userId]);
   
+  console.log('🎯 확인할 업적 수:', unlockedAchievements.rows.length);
+  
   const newlyUnlocked = [];
   
   for (const achievement of unlockedAchievements.rows) {
-    const condition = JSON.parse(achievement.condition);
+    console.log('🔍 업적 확인:', achievement.title);
+    console.log('📋 조건 원본:', achievement.condition, typeof achievement.condition);
+    
+    // PostgreSQL JSONB는 자동으로 객체로 변환되므로 JSON.parse() 불필요
+    let condition;
+    if (typeof achievement.condition === 'string') {
+      // 만약 문자열이면 파싱
+      try {
+        condition = JSON.parse(achievement.condition);
+      } catch (error) {
+        console.error('🚨 JSON 파싱 오류:', error);
+        continue;
+      }
+    } else {
+      // 이미 객체면 그대로 사용
+      condition = achievement.condition;
+    }
+    
+    console.log('✅ 파싱된 조건:', condition);
+    
     const isUnlocked = checkAchievementCondition(updatedMetrics, condition);
+    console.log('🎖️ 달성 여부:', isUnlocked);
     
     if (isUnlocked) {
+      console.log('🎉 업적 달성!', achievement.title);
       newlyUnlocked.push(achievement);
     }
   }
   
+  console.log('🏆 총 달성 업적 수:', newlyUnlocked.length);
   return newlyUnlocked;
 };
+
 
 // ============== 업적 조건 확인 헬퍼 ==============
 const checkAchievementCondition = (metrics, condition) => {
