@@ -213,7 +213,6 @@ export const getBucketDetailController = trycatchWrapper(async (req, res) => {
   if (!bucket.account_no) {
     throw customError(400, '계좌 정보가 없는 적금통입니다.');
   }
-  
   // 6. 실시간 동기화 수행
   const syncResult = await syncBucketDetailData(bucket);
   
