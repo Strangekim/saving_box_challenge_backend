@@ -132,28 +132,58 @@ export const markBucketAsSuccess = async (bucketId) => {
   try {
     await client.query('BEGIN');
     
-    // 1. 적금통 상태를 성공으로 변경, 계좌번호 제거
+    // 1. 적금통 정보 조회 (챌린지 여부 확인용)
+    const bucketResult = await client.query(`
+      SELECT user_id, is_challenge, name 
+      FROM saving_bucket.list 
+      WHERE id = $1
+    `, [bucketId]);
+    
+    if (bucketResult.rows.length === 0) {
+      throw new Error(`Bucket ${bucketId} not found`);
+    }
+    
+    const bucket = bucketResult.rows[0];
+    const isChallenge = bucket.is_challenge;
+    
+    // 2. 적금통 상태를 성공으로 변경, 계좌번호 제거
     await client.query(`
       UPDATE saving_bucket.list 
       SET status = 'success', accountno = NULL 
       WHERE id = $1
     `, [bucketId]);
     
-    // 2. 사용자 업적 추적 테이블 업데이트
-    await client.query(`
-      UPDATE users.metrics 
-      SET success_bucket_count = success_bucket_count + 1,
+    // 3. 사용자 업적 추적 테이블 업데이트
+    if (isChallenge) {
+      // 챌린지 상품인 경우: 성공 적금통 + 챌린지 성공 모두 증가
+      await client.query(`
+        UPDATE users.metrics 
+        SET 
+          success_bucket_count = success_bucket_count + 1,
+          challenge_success_count = challenge_success_count + 1,
           updated_at = NOW()
-      WHERE user_id = (
-        SELECT user_id FROM saving_bucket.list WHERE id = $1
-      )
-    `, [bucketId]);
+        WHERE user_id = $1
+      `, [bucket.user_id]);
+      
+      console.log(`🏆 Bucket ${bucketId} (${bucket.name}) marked as SUCCESS - Challenge completed!`);
+    } else {
+      // 일반 상품인 경우: 성공 적금통만 증가
+      await client.query(`
+        UPDATE users.metrics 
+        SET 
+          success_bucket_count = success_bucket_count + 1,
+          updated_at = NOW()
+        WHERE user_id = $1
+      `, [bucket.user_id]);
+      
+      console.log(`✅ Bucket ${bucketId} (${bucket.name}) marked as SUCCESS (expired)`);
+    }
     
     await client.query('COMMIT');
-    console.log(`✅ Bucket ${bucketId} marked as SUCCESS (expired)`);
     
   } catch (error) {
     await client.query('ROLLBACK');
+    console.error(`❌ Failed to mark bucket ${bucketId} as success:`, error.message);
     throw error;
   } finally {
     client.release();
