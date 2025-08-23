@@ -473,3 +473,58 @@ export const formatBucketListResponse = (buckets, total, page) => {
     }
   };
 };
+
+
+// ============== 적금통 존재 및 계좌번호 조회 서비스 ==============
+export const getBucketById = async (bucketId) => {
+  const result = await query(
+    `SELECT 
+      id, 
+      user_id, 
+      accountno as account_no, 
+      name, 
+      status,
+      is_public
+     FROM saving_bucket.list 
+     WHERE id = $1`,
+    [bucketId]
+  );
+  
+  if (result.rows.length === 0) {
+    throw customError(404, '존재하지 않는 적금통입니다.');
+  }
+  
+  return result.rows[0];
+};
+
+// ============== 적금통 소유자의 userKey 조회 서비스 ==============
+export const getBucketOwnerUserKey = async (userId) => {
+  const result = await query(
+    'SELECT userKey FROM users.list WHERE id = $1',
+    [userId]
+  );
+  
+  if (result.rows.length === 0) {
+    throw customError(404, '적금통 소유자를 찾을 수 없습니다.');
+  }
+  
+  const user = result.rows[0];
+  
+  // userKey 복호화
+  const decryptedUserKey = decrypt(user.userkey);
+  
+  return decryptedUserKey;
+};
+
+// ============== 신한 API: 적금 납입 내역 조회 서비스 ==============
+export const getSavingsPaymentHistory = async (userKey, accountNo) => {
+  const paymentData = await shinhanRequestWithUser({
+    path: '/edu/savings/inquirePayment',
+    userKey,
+    json: {
+      accountNo
+    }
+  });
+  
+  return paymentData;
+};

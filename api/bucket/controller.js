@@ -10,7 +10,10 @@ import {
     updateBucketInDatabase,
     getBucketList,
     getBucketListCount,
-    formatBucketListResponse
+    formatBucketListResponse,
+    getBucketById,
+    getBucketOwnerUserKey,
+    getSavingsPaymentHistory
 } from './service.js';
 
 // ============== 예금+적금 통합 상품 목록 조회 ==============
@@ -136,6 +139,71 @@ export const updateBucket = trycatchWrapper(async (req, res) => {
       updateData.outfit_item_id, 
       updateData.hat_item_id
     );
+  }
+  
+  // 4. 적금통 정보 업데이트
+  const updatedBucket = await updateBucketInDatabase(bucketId, updateData);
+  
+  // 5. 성공 응답
+  res.status(200).json({
+    success: true,
+    message: '적금통 정보가 성공적으로 수정되었습니다.',
+    bucket: {
+      id: updatedBucket.id,
+      name: updatedBucket.name,
+      description: updatedBucket.description,
+      character_item_id: updatedBucket.character_item_id,
+      outfit_item_id: updatedBucket.outfit_item_id,
+      hat_item_id: updatedBucket.hat_item_id
+    }
+  });
+});
+
+// ============== 적금통 목록 조회 ==============
+export const getBucketListController = trycatchWrapper(async (req, res) => {
+  const { category, page } = req.query;
+  const userId = req.session?.userId || null; // 로그인한 경우만 사용자 ID 가져오기
+  
+  // 1. 적금통 목록 조회
+  const buckets = await getBucketList(category, page, userId);
+  
+  // 2. 전체 개수 조회
+  const total = await getBucketListCount();
+  
+  // 3. 응답 데이터 포맷팅
+  const response = formatBucketListResponse(buckets, total, page);
+  
+  // 4. 성공 응답
+  res.status(200).json(response);
+});
+
+// ============== 적금통 상세보기 ==============
+export const getBucketDetailController = trycatchWrapper(async (req, res) => {
+  const bucketId = parseInt(req.params.id);
+  
+  // 1. 적금통 존재 확인 및 기본 정보 조회
+  const bucket = await getBucketById(bucketId);
+  
+  // 2. 공개 적금통이 아닌 경우 접근 제한 (선택사항)
+  // if (!bucket.is_public) {
+  //   throw customError(403, '비공개 적금통입니다.');
+  // }
+  
+  // 3. 적금통이 활성 상태가 아닌 경우 계좌번호가 없을 수 있음
+  if (!bucket.account_no) {
+    throw customError(400, '계좌 정보가 없는 적금통입니다.');
+  }
+  
+  // 4. 적금통 소유자의 userKey 조회
+  const userKey = await getBucketOwnerUserKey(bucket.user_id);
+  
+  // 5. 신한 API로 납입 내역 조회
+  const paymentHistory = await getSavingsPaymentHistory(userKey, bucket.account_no);
+  
+  // 6. 신한 API 응답 그대로 반환
+  res.status(200).json(paymentHistory);
+});
+=======
   }
   
   // 4. 적금통 정보 업데이트

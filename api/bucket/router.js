@@ -3,7 +3,8 @@ import {
   inquireAllProducts, 
   createBucket,
   updateBucket,
-  getBucketListController
+  getBucketListController,
+  getBucketDetailController
  } from './controller.js';
 import { 
   validateSchema, 
@@ -28,6 +29,13 @@ router.post("/create",
   createBucket
 );
 
+// 적금통 목록 조회
+router.get("/", 
+  validateQuery(savingsSchemas.listQuery),
+  getBucketListController
+);
+
+
 // 적금통 수정
 router.patch("/:id", 
   requireAuth,
@@ -38,10 +46,10 @@ router.patch("/:id",
   updateBucket
 );
 
-// 적금통 목록 조회
-router.get("/", 
-  validateQuery(savingsSchemas.listQuery),
-  getBucketListController
+// 적금통 상세보기
+router.get("/:id", 
+  validateParams(idParam()),
+  getBucketDetailController
 );
 
 export default router;
