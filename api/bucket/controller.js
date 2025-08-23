@@ -203,7 +203,6 @@ export const getBucketDetailController = trycatchWrapper(async (req, res) => {
   // 6. 신한 API 응답 그대로 반환
   res.status(200).json(paymentHistory);
 });
-=======
   }
   
   // 4. 적금통 정보 업데이트
