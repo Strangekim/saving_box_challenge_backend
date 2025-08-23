@@ -168,3 +168,36 @@ export const destroyUserSession = (req, res) => {
     });
   });
 };
+
+// ============== 로그인 시 완료된 적금통 업적 확인 (챌린지/일반 구분) ==============
+export const checkCompletedBucketsForAchievements = async (userId) => {
+  // 완료된 적금통들을 챌린지 여부로 구분하여 조회
+  const result = await query(`
+    SELECT 
+      sb.id,
+      sb.name,
+      sb.target_amount,
+      sb.is_challenge,
+      sb.created_at
+    FROM saving_bucket.list sb
+    WHERE sb.user_id = $1 
+      AND sb.status = 'success'
+    ORDER BY sb.created_at DESC
+  `, [userId]);
+  
+  const buckets = result.rows;
+  const challengeBuckets = buckets.filter(bucket => bucket.is_challenge);
+  const normalBuckets = buckets.filter(bucket => !bucket.is_challenge);
+  
+  console.log(`🔍 사용자 ${userId}의 완료된 적금통:`);
+  console.log(`   총 ${buckets.length}개 (챌린지: ${challengeBuckets.length}개, 일반: ${normalBuckets.length}개)`);
+  
+  return {
+    buckets,
+    challengeBuckets,
+    normalBuckets,
+    length: buckets.length,
+    challengeCount: challengeBuckets.length,
+    normalCount: normalBuckets.length
+  };
+};

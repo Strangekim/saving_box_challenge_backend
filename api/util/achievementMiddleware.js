@@ -118,3 +118,4 @@ export const handleChallengeCompletionAchievement = async (req, res, challengeDa
     ranking: challengeData.ranking
   });
 };
+

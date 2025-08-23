@@ -142,7 +142,10 @@ export const processUserAction = async (userId, actionType, actionData = {}) => 
     'create_comment': { comment_count: 1 },
     'bucket_push': { bucket_push_count: 1 },
     'complete_bucket': { success_bucket_count: 1 },
-    'complete_challenge': { challenge_success_count: 1 }
+    'complete_challenge': { 
+      challenge_success_count: 1,
+      success_bucket_count: 1  // 챌린지도 적금통이므로 둘 다 증가
+    }
   };
   
   const metricUpdates = actionMetrics[actionType];
@@ -150,8 +153,16 @@ export const processUserAction = async (userId, actionType, actionData = {}) => 
     throw new Error(`Unknown action type: ${actionType}`);
   }
   
+  console.log(`🎯 업적 처리 시작: ${actionType}`, metricUpdates);
+  
   // 1. 메트릭 업데이트
   const updatedMetrics = await updateUserMetrics(userId, metricUpdates);
+  
+  console.log(`📊 업데이트된 메트릭:`, {
+    bucket_count: updatedMetrics.bucket_count,
+    success_bucket_count: updatedMetrics.success_bucket_count,
+    challenge_success_count: updatedMetrics.challenge_success_count
+  });
   
   // 2. 새로 달성한 업적 확인
   const newAchievements = await checkAchievements(userId, updatedMetrics);
