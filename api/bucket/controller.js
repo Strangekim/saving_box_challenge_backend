@@ -16,7 +16,7 @@ import {
     getSavingsPaymentHistory,
     syncBucketDetailData,
     getBucketDetailInfo,
-    incrementBucketViewCount
+    incrementBucketViewCount,  
 } from './service.js';
 
 // ============== 예금+적금 통합 상품 목록 조회 ==============
