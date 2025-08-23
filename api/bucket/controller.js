@@ -10,7 +10,10 @@ import {
     updateBucketInDatabase,
     getBucketList,
     getBucketListCount,
-    formatBucketListResponse
+    formatBucketListResponse,
+    getBucketById,
+    getBucketOwnerUserKey,
+    getSavingsPaymentHistory
 } from './service.js';
 
 // ============== 예금+적금 통합 상품 목록 조회 ==============
@@ -156,7 +159,6 @@ export const updateBucket = trycatchWrapper(async (req, res) => {
   });
 });
 
-
 // ============== 적금통 목록 조회 ==============
 export const getBucketListController = trycatchWrapper(async (req, res) => {
   const { category, page } = req.query;
@@ -173,4 +175,31 @@ export const getBucketListController = trycatchWrapper(async (req, res) => {
   
   // 4. 성공 응답
   res.status(200).json(response);
+});
+
+// ============== 적금통 상세보기 ==============
+export const getBucketDetailController = trycatchWrapper(async (req, res) => {
+  const bucketId = parseInt(req.params.id);
+  
+  // 1. 적금통 존재 확인 및 기본 정보 조회
+  const bucket = await getBucketById(bucketId);
+  
+  // 2. 공개 적금통이 아닌 경우 접근 제한 (선택사항)
+  // if (!bucket.is_public) {
+  //   throw customError(403, '비공개 적금통입니다.');
+  // }
+  
+  // 3. 적금통이 활성 상태가 아닌 경우 계좌번호가 없을 수 있음
+  if (!bucket.account_no) {
+    throw customError(400, '계좌 정보가 없는 적금통입니다.');
+  }
+  
+  // 4. 적금통 소유자의 userKey 조회
+  const userKey = await getBucketOwnerUserKey(bucket.user_id);
+  
+  // 5. 신한 API로 납입 내역 조회
+  const paymentHistory = await getSavingsPaymentHistory(userKey, bucket.account_no);
+  
+  // 6. 신한 API 응답 그대로 반환
+  res.status(200).json(paymentHistory);
 });

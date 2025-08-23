@@ -6,7 +6,8 @@ import bucketRouter from './bucket/router.js';
 import usersRouter from './users/router.js';
 import { ping, query } from "./database/postgreSQL.js";
 import session from 'express-session';
-// docker compose exec api npm i express-session
+import { setupCronJobs } from './cron/cronScheduler.js';
+
 
 const app = express();
 
@@ -60,5 +61,10 @@ app.use((req, res, next) => {
 
 const nowDate = new Date(Date.now());
 
-app.listen(PORT, "0.0.0.0", () => 
-  console.log(`${PORT}번 포트에서 웹 서버 실행 중 입니다. ${nowDate}`));
+// 서버 시작 후 크론 작업 등록
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`${PORT}번 포트에서 웹 서버 실행 중 ${nowDate}`);
+  
+  // 크론 작업 시작
+  setupCronJobs();
+});
