@@ -18,7 +18,13 @@ import {
   checkCompletedBucketsForAchievements,
   // 로그아웃 관련
   checkUserSession,
-  destroyUserSession
+  destroyUserSession,
+  // 가방 관련
+  getUserInventory,
+  // 프로필 업데이트
+  updateUserCharacter,
+  // 내 정보 가져오기
+  getUserProfile
 } from './service.js';
 
 // ============== 회원가입 컨트롤러 ==============
@@ -223,5 +229,52 @@ export const logOut = trycatchWrapper(async (req, res) => {
   // 3. 성공 응답
   res.status(200).json({
     message: '로그아웃이 완료되었습니다'
+  });
+});
+
+// ============== 사용자 가방 조회 ==============
+export const getUserInventoryController = trycatchWrapper(async (req, res) => {
+  const userId = req.session.userId;
+  
+  // 1. 전체 아이템 목록과 사용자 보유 정보 조회
+  const inventoryData = await getUserInventory(userId);
+  
+  // 2. 성공 응답
+  res.status(200).json({
+    message: '가방 조회 성공',
+    inventory: inventoryData
+  });
+});
+
+// ============== 사용자 캐릭터 프로필 수정 ==============
+export const updateUserCharacterController = trycatchWrapper(async (req, res) => {
+  const userId = req.session.userId;
+  const { character_item_id, outfit_item_id, hat_item_id } = req.body;
+  
+  // 1. 사용자 캐릭터 프로필 업데이트
+  const updatedCharacter = await updateUserCharacter(userId, {
+    character_item_id,
+    outfit_item_id,
+    hat_item_id
+  });
+  
+  // 2. 성공 응답
+  res.status(200).json({
+    message: '캐릭터 프로필이 성공적으로 수정되었습니다.',
+    character: updatedCharacter
+  });
+});
+
+// ============== 내 정보 조회 ==============
+export const getUserProfileController = trycatchWrapper(async (req, res) => {
+  const userId = req.session.userId;
+  
+  // 1. 사용자 프로필 정보 조회
+  const userProfile = await getUserProfile(userId);
+  
+  // 2. 성공 응답
+  res.status(200).json({
+    message: '프로필 조회 성공',
+    user: userProfile
   });
 });
