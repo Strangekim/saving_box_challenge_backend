@@ -52,5 +52,4 @@ router.get("/:id",
   getBucketDetailController
 );
 
-
 export default router;
