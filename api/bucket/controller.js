@@ -13,7 +13,10 @@ import {
     formatBucketListResponse,
     getBucketById,
     getBucketOwnerUserKey,
-    getSavingsPaymentHistory
+    getSavingsPaymentHistory,
+    syncBucketDetailData,
+    getBucketDetailInfo,
+    incrementBucketViewCount
 } from './service.js';
 
 // ============== 예금+적금 통합 상품 목록 조회 ==============
@@ -177,29 +180,45 @@ export const getBucketListController = trycatchWrapper(async (req, res) => {
   res.status(200).json(response);
 });
 
-// ============== 적금통 상세보기 ==============
+// ============== 적금통 상세보기 (실시간 동기화 포함) ==============
 export const getBucketDetailController = trycatchWrapper(async (req, res) => {
   const bucketId = parseInt(req.params.id);
+  const userId = req.session?.userId || null; // 로그인한 경우만 사용자 ID 가져오기
   
   // 1. 적금통 존재 확인 및 기본 정보 조회
   const bucket = await getBucketById(bucketId);
   
-  // 2. 공개 적금통이 아닌 경우 접근 제한 (선택사항)
-  // if (!bucket.is_public) {
-  //   throw customError(403, '비공개 적금통입니다.');
-  // }
+  // 2. 공개 적금통이 아닌 경우 접근 제한
+  if (!bucket.is_public) {
+    // 본인 적금통이 아닌 경우 접근 금지
+    if (!userId || bucket.user_id !== userId) {
+      throw customError(403, '비공개 적금통입니다.');
+    }
+  }
+  // 3. 조회수 증가 (단순하게)
+  await incrementBucketViewCount(bucketId);
   
-  // 3. 적금통이 활성 상태가 아닌 경우 계좌번호가 없을 수 있음
+  // 4. 적금통이 활성 상태가 아닌 경우 (완료/실패 상태)
+  if (bucket.status !== 'in_progress') {
+    // 비활성 상태면 기본 정보 + 댓글 반환 (신한 API 호출 없음)
+    const bucketDetailInfo = await getBucketDetailInfo(bucketId, userId);
+    return res.status(200).json({
+      ...bucketDetailInfo,
+      sync_status: 'inactive',
+      message: `${bucket.status === 'success' ? '완료된' : '실패한'} 적금통입니다.`
+    });
+  }
+  
+  // 5. 적금통이 활성 상태인데 계좌번호가 없는 경우
   if (!bucket.account_no) {
     throw customError(400, '계좌 정보가 없는 적금통입니다.');
   }
+  // 6. 실시간 동기화 수행
+  const syncResult = await syncBucketDetailData(bucket);
   
-  // 4. 적금통 소유자의 userKey 조회
-  const userKey = await getBucketOwnerUserKey(bucket.user_id);
+  // 7. 동기화 후 최신 상태의 적금통 상세 정보 조회
+  const bucketDetailInfo = await getBucketDetailInfo(bucketId, userId);
   
-  // 5. 신한 API로 납입 내역 조회
-  const paymentHistory = await getSavingsPaymentHistory(userKey, bucket.account_no);
-  
-  // 6. 신한 API 응답 그대로 반환
-  res.status(200).json(paymentHistory);
+  // 8. 동기화 결과와 상세 정보를 합쳐서 응답
+  res.status(200).json(bucketDetailInfo);
 });
