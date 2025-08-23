@@ -7,6 +7,7 @@ import usersRouter from './users/router.js';
 import { ping, query } from "./database/postgreSQL.js";
 import session from 'express-session';
 import { setupCronJobs } from './cron/cronScheduler.js';
+import rankingRouter from './ranking/router.js'; // 추가
 
 
 const app = express();
@@ -42,6 +43,8 @@ app.get("/db/ping", async (_req, res) => {
 app.use("/bucket", bucketRouter)
 
 app.use('/users', usersRouter);
+
+app.use('/ranking', rankingRouter); 
 
 // ============== 공통 에러 핸들러 ===========
 
