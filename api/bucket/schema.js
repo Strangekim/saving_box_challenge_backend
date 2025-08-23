@@ -29,7 +29,7 @@ export const savingsSchemas = {
       .default(false),
 
     // 납입 주기
-    deposit_cycle: Joi.string().valid('daily', 'weekly', 'monthly').default('daily'),
+    deposit_cycle: Joi.string().valid('daily', 'weekly', 'monthly').default('monthly'),
 
     // 아바타/코스메틱 아이템 (선택)
     character_item_id: Joi.number().integer().positive().required(),
