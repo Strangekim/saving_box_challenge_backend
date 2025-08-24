@@ -489,3 +489,164 @@ export const getUserProfile = async (userId) => {
   };
 };
 
+// ============== 내 적금통 목록 조회 서비스 ==============
+export const getMyBucketList = async (userId, page = 1) => {
+  const limit = 10; // 내 적금통은 한 페이지에 더 많이 보여줘도 됨
+  const offset = (page - 1) * limit;
+  
+  const myBucketsQuery = `
+    SELECT 
+      -- 적금통 기본 정보
+      sb.id,
+      sb.name,
+      sb.description,
+      sb.target_amount,
+      sb.status,
+      sb.is_challenge,
+      sb.like_count,
+      sb.view_count,
+      sb.created_at,
+      
+      -- 금융 정보
+      sb.accountname as account_name,
+      sb.interestrate as interest_rate,
+      sb.subscriptionperiod as subscription_period,
+      sb.deposit_cycle,
+      sb.total_payment,
+      sb.success_payment,
+      sb.fail_payment,
+      sb.last_progress_date,
+      sb.accountno as account_no,
+      
+      -- 적금통 캐릭터 정보
+      sb.character_item_id,
+      sb.outfit_item_id,
+      sb.hat_item_id,
+      char_item.name as character_name,
+      outfit_item.name as outfit_name,
+      hat_item.name as hat_name,
+      
+      -- 댓글 수
+      COALESCE(comments.comment_count, 0) as comment_count
+      
+    FROM saving_bucket.list AS sb
+    
+    -- 적금통 캐릭터 정보 조인
+    LEFT JOIN cosmetic_item.list AS char_item ON sb.character_item_id = char_item.id
+    LEFT JOIN cosmetic_item.list AS outfit_item ON sb.outfit_item_id = outfit_item.id
+    LEFT JOIN cosmetic_item.list AS hat_item ON sb.hat_item_id = hat_item.id
+    
+    -- 댓글 수 조인
+    LEFT JOIN (
+      SELECT bucket_id, COUNT(*) as comment_count 
+      FROM saving_bucket.comment 
+      GROUP BY bucket_id
+    ) AS comments ON sb.id = comments.bucket_id
+    
+    WHERE sb.user_id = $1
+    
+    ORDER BY 
+      -- 1순위: 진행중 상태를 최우선 (최신순)
+      CASE WHEN sb.status = 'in_progress' THEN 0 ELSE 1 END,
+      CASE WHEN sb.status = 'in_progress' THEN sb.created_at END DESC,
+      
+      -- 2순위: 성공 상태 (최신순)  
+      CASE WHEN sb.status = 'success' THEN 0 ELSE 1 END,
+      CASE WHEN sb.status = 'success' THEN sb.created_at END DESC,
+      
+      -- 3순위: 실패 상태 (최신순)
+      CASE WHEN sb.status = 'failed' THEN 0 ELSE 1 END,
+      CASE WHEN sb.status = 'failed' THEN sb.created_at END DESC
+    
+    LIMIT $2 OFFSET $3
+  `;
+  
+  const result = await query(myBucketsQuery, [userId, limit, offset]);
+  return result.rows;
+};
+
+// ============== 내 적금통 총 개수 조회 ==============
+export const getMyBucketCount = async (userId) => {
+  const countQuery = `
+    SELECT 
+      COUNT(*) as total,
+      COUNT(CASE WHEN status = 'in_progress' THEN 1 END) as in_progress,
+      COUNT(CASE WHEN status = 'success' THEN 1 END) as success,
+      COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed
+    FROM saving_bucket.list 
+    WHERE user_id = $1
+  `;
+  
+  const result = await query(countQuery, [userId]);
+  return result.rows[0];
+};
+
+// ============== 내 적금통 목록 응답 포맷팅 ==============
+export const formatMyBucketListResponse = (buckets, counts, page) => {
+  const limit = 10;
+  const hasNext = (page * limit) < parseInt(counts.total);
+  
+  const formattedBuckets = buckets.map(bucket => {
+    // 진행률 계산
+    const progressPercentage = bucket.total_payment > 0 
+      ? ((bucket.success_payment / bucket.total_payment) * 100).toFixed(1)
+      : 0;
+    
+    return {
+      id: bucket.id,
+      name: bucket.name,
+      description: bucket.description,
+      target_amount: bucket.target_amount,
+      current_progress: parseFloat(progressPercentage),
+      status: bucket.status,
+      is_challenge: bucket.is_challenge,
+      like_count: bucket.like_count,
+      view_count: bucket.view_count,
+      comment_count: bucket.comment_count,
+      created_at: bucket.created_at,
+      
+      // 금융 정보
+      account_name: bucket.account_name,
+      interest_rate: bucket.interest_rate,
+      subscription_period: bucket.subscription_period,
+      deposit_cycle: bucket.deposit_cycle,
+      total_payment: bucket.total_payment,
+      success_payment: bucket.success_payment,
+      fail_payment: bucket.fail_payment,
+      last_progress_date: bucket.last_progress_date,
+      account_no: bucket.account_no, // 내 적금통에서는 계좌번호도 보여줌
+      
+      // 적금통 캐릭터 정보
+      character: {
+        character_item: {
+          id: bucket.character_item_id,
+          name: bucket.character_name
+        },
+        outfit_item: {
+          id: bucket.outfit_item_id,
+          name: bucket.outfit_name
+        },
+        hat_item: {
+          id: bucket.hat_item_id,
+          name: bucket.hat_name
+        }
+      }
+    };
+  });
+  
+  return {
+    buckets: formattedBuckets,
+    stats: {
+      total: parseInt(counts.total),
+      in_progress: parseInt(counts.in_progress),
+      success: parseInt(counts.success),
+      failed: parseInt(counts.failed)
+    },
+    pagination: {
+      page,
+      limit,
+      total: parseInt(counts.total),
+      has_next: hasNext
+    }
+  };
+};

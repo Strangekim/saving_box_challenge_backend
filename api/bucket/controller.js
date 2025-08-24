@@ -1,4 +1,5 @@
 import { trycatchWrapper } from '../util/trycatchWrapper.js';
+import { customError } from '../util/customError.js';
 import { handleBucketCreationAchievement } from '../util/achievementMiddleware.js';
 import { 
     getAllProducts, 
@@ -16,7 +17,11 @@ import {
     getSavingsPaymentHistory,
     syncBucketDetailData,
     getBucketDetailInfo,
-    incrementBucketViewCount,  
+    incrementBucketViewCount,
+    validateBucketTermination,
+    deleteShinhanDepositAccount,
+    deleteShinhanSavingsAccount,
+    completeBucketTermination
 } from './service.js';
 
 // ============== 예금+적금 통합 상품 목록 조회 ==============
@@ -223,3 +228,50 @@ export const getBucketDetailController = trycatchWrapper(async (req, res) => {
   // 8. 동기화 결과와 상세 정보를 합쳐서 응답
   res.status(200).json(bucketDetailInfo);
 });
+
+// ============== 적금통 중도 해지 ==============
+export const terminateBucket = trycatchWrapper(async (req, res) => {
+  const bucketId = parseInt(req.params.id);
+  const userId = req.session.userId;
+  
+  // 1. 적금통 해지 가능 여부 확인 및 정보 조회
+  const bucket = await validateBucketTermination(bucketId, userId);
+  
+  // 2. 사용자 userKey 조회
+  const userKey = await getBucketOwnerUserKey(bucket.user_id);
+  
+  // 3. 계좌 타입에 따른 해지 API 호출
+  let deleteResult;
+  let accountType;
+  
+  if (bucket.account_type_code === '2') {
+    // 예금 계좌 해지
+    accountType = 'deposit';
+    deleteResult = await deleteShinhanDepositAccount(userKey, bucket.accountno);
+  } else if (bucket.account_type_code === '3') {
+    // 적금 계좌 해지
+    accountType = 'savings';
+    deleteResult = await deleteShinhanSavingsAccount(userKey, bucket.accountno);
+  } else {
+    throw customError(400, '알 수 없는 계좌 타입입니다.');
+  }
+  
+  console.log('🔍 해지 API 응답:', deleteResult);
+  
+  // 4. 해지 API 호출 성공 확인 (REC 구조로 수정)
+  if (!deleteResult.REC || deleteResult.REC.status !== 'CLOSED') {
+    throw customError(500, '계좌 해지 처리 중 오류가 발생했습니다.');
+  }
+  
+  // 5. DB에서 적금통 실패 처리 및 계좌번호 삭제
+  const terminationResult = await completeBucketTermination(bucketId, deleteResult);
+  
+  // 6. 성공 응답
+  res.status(200).json({
+    success: true,
+    message: '적금통 중도 해지가 완료되었습니다.',
+    account_type: accountType,
+    ...terminationResult
+  });
+});
+

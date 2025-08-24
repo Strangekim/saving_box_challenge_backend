@@ -1,0 +1,64 @@
+{
+    "folder-color.pathColors": [
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\ranking/",
+            "color": "foldercolorizer.color_99cc00"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\ranking\\controller.js/",
+            "color": "foldercolorizer.color_99cc00"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\ranking\\router.js/",
+            "color": "foldercolorizer.color_99cc00"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\ranking\\schema.js/",
+            "color": "foldercolorizer.color_99cc00"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\ranking\\service.js/",
+            "color": "foldercolorizer.color_99cc00"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\users/",
+            "color": "foldercolorizer.color_00cccc"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\users\\controller.js/",
+            "color": "foldercolorizer.color_00cccc"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\users\\router.js/",
+            "color": "foldercolorizer.color_00cccc"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\users\\schema.js/",
+            "color": "foldercolorizer.color_00cccc"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\users\\service.js/",
+            "color": "foldercolorizer.color_00cccc"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\bucket/",
+            "color": "foldercolorizer.color_cc33ff"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\bucket\\controller.js/",
+            "color": "foldercolorizer.color_cc33ff"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\bucket\\router.js/",
+            "color": "foldercolorizer.color_cc33ff"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\bucket\\schema.js/",
+            "color": "foldercolorizer.color_cc33ff"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\bucket\\service.js/",
+            "color": "foldercolorizer.color_cc33ff"
+        }
+    ]
+}

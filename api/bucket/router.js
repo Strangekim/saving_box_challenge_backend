@@ -4,7 +4,8 @@ import {
   createBucket,
   updateBucket,
   getBucketListController,
-  getBucketDetailController
+  getBucketDetailController,
+  terminateBucket
  } from './controller.js';
 import { 
   validateSchema, 
@@ -51,5 +52,12 @@ router.get("/:id",
   validateParams(idParam()),
   getBucketDetailController
 );
+
+// 적금통 돈 돌려받기
+router.post("/:id/get_money",
+  requireAuth,
+  validateParams(idParam()),
+  terminateBucket
+)
 
 export default router;

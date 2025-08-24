@@ -1031,3 +1031,143 @@ export const incrementBucketViewCount = async (bucketId) => {
   }
 };
 
+// ============== 적금통 해지 가능 여부 확인 ==============
+export const validateBucketTermination = async (bucketId, userId) => {
+  const result = await query(`
+    SELECT 
+      id, 
+      user_id, 
+      accountno, 
+      accounttypecode as account_type_code,
+      name, 
+      status,
+      target_amount
+    FROM saving_bucket.list 
+    WHERE id = $1
+  `, [bucketId]);
+  
+  if (result.rows.length === 0) {
+    throw customError(404, '존재하지 않는 적금통입니다.');
+  }
+  
+  const bucket = result.rows[0];
+  
+  // 소유권 확인
+  if (bucket.user_id !== userId) {
+    throw customError(403, '해지 권한이 없습니다.');
+  }
+  
+  // 상태 확인 (중복 처리 방지)
+  if (bucket.status !== 'in_progress') {
+    throw customError(400, `이미 ${bucket.status} 상태인 적금통은 해지할 수 없습니다.`);
+  }
+  
+  // 계좌번호 확인
+  if (!bucket.accountno) {
+    throw customError(400, '계좌 정보가 없는 적금통입니다.');
+  }
+  
+  return bucket;
+};
+
+// ============== 신한 API: 예금 계좌 해지 서비스 ==============
+export const deleteShinhanDepositAccount = async (userKey, accountNo) => {
+  const deleteResult = await shinhanRequestWithUser({
+    path: '/edu/deposit/deleteDepositAccount',
+    userKey,
+    json: {
+      accountNo
+    }
+  });
+  
+  return deleteResult;
+};
+
+// ============== 신한 API: 적금 계좌 해지 서비스 ==============
+export const deleteShinhanSavingsAccount = async (userKey, accountNo) => {
+  const deleteResult = await shinhanRequestWithUser({
+    path: '/edu/savings/deleteAccount',
+    userKey,
+    json: {
+      accountNo
+    }
+  });
+  
+  return deleteResult;
+};
+
+// ============== 중도 해지 완료 처리 ==============
+export const completeBucketTermination = async (bucketId, deleteApiResponse) => {
+  const client = await pool.connect();
+  
+  try {
+    await client.query('BEGIN');
+    
+    // 1. 적금통 상태 재확인 (동시성 제어)
+    const bucketResult = await client.query(`
+      SELECT id, status, name, user_id
+      FROM saving_bucket.list 
+      WHERE id = $1
+      FOR UPDATE
+    `, [bucketId]);
+    
+    if (bucketResult.rows.length === 0) {
+      throw new Error('적금통을 찾을 수 없습니다.');
+    }
+    
+    const bucket = bucketResult.rows[0];
+    
+    // 2. 이미 처리된 적금통인지 재확인
+    if (bucket.status !== 'in_progress') {
+      await client.query('ROLLBACK');
+      throw customError(400, `이미 ${bucket.status} 상태로 처리된 적금통입니다.`);
+    }
+    
+    // 3. 적금통을 실패 상태로 변경 및 계좌번호 삭제
+    await client.query(`
+      UPDATE saving_bucket.list 
+      SET 
+        status = 'failed',
+        accountno = NULL
+      WHERE id = $1
+    `, [bucketId]);
+    
+    await client.query('COMMIT');
+    
+    // 4. 중도 해지 정보 로깅 (REC 구조로 수정)
+    const withdrawalInfo = deleteApiResponse.REC;
+    console.log(`💸 중도 해지 처리 완료 - Bucket ${bucketId} (${bucket.name})`);
+    console.log(`   최종 환불 금액: ${withdrawalInfo.earlyTerminationBalance}원`);
+    console.log(`   해지일: ${withdrawalInfo.earlyTerminationDate}`);
+    
+    return {
+      success: true,
+      bucket: {
+        id: bucketId,
+        name: bucket.name,
+        user_id: bucket.user_id,
+        status: 'failed'
+      },
+      refund: {
+        total_balance: parseInt(withdrawalInfo.totalBalance),
+        early_termination_interest: parseInt(withdrawalInfo.earlyTerminationInterest),
+        early_termination_balance: parseInt(withdrawalInfo.earlyTerminationBalance),
+        early_termination_date: withdrawalInfo.earlyTerminationDate,
+        bank_info: {
+          bank_code: withdrawalInfo.bankCode,
+          bank_name: withdrawalInfo.bankName,
+          account_no: withdrawalInfo.accountNo,
+          account_name: withdrawalInfo.accountName
+        }
+      }
+    };
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error(`❌ 중도 해지 완료 처리 실패 - Bucket ${bucketId}:`, error.message);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
