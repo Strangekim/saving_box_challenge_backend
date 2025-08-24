@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { validateSchema } from '../util/validateSchema.js';
-import { loginSchema,updateCharacterSchema } from './schema.js';
+import { loginSchema,updateCharacterSchema,myBucketsQuerySchema  } from './schema.js';
 import { requireAuth } from '../util/auth.js';
 import { 
     logIn,
@@ -8,7 +8,8 @@ import {
     logOut,
     getUserInventoryController,
     updateUserCharacterController,
-    getUserProfileController
+    getUserProfileController,
+    getMyBucketListController
 } from './controller.js';
 
 const router = Router();
@@ -47,6 +48,13 @@ router.patch("/character",
 router.get("/me",
     requireAuth,
     getUserProfileController
+);
+
+// 내 적금통 목록 조회 
+router.get("/buckets",
+    requireAuth,
+    validateSchema(myBucketsQuerySchema),
+    getMyBucketListController
 );
 
 export default router;

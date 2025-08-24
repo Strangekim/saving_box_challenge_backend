@@ -24,7 +24,11 @@ import {
   // 프로필 업데이트
   updateUserCharacter,
   // 내 정보 가져오기
-  getUserProfile
+  getUserProfile,
+  // 내 적금통 목록 가져오기
+  getMyBucketList,
+  getMyBucketCount,
+  formatMyBucketListResponse
 } from './service.js';
 
 // ============== 회원가입 컨트롤러 ==============
@@ -276,5 +280,26 @@ export const getUserProfileController = trycatchWrapper(async (req, res) => {
   res.status(200).json({
     message: '프로필 조회 성공',
     user: userProfile
+  });
+});
+
+// ============== 내 적금통 목록 조회 ==============
+export const getMyBucketListController = trycatchWrapper(async (req, res) => {
+  const userId = req.session.userId;
+  const page = parseInt(req.query.page) || 1;
+  
+  // 1. 내 적금통 목록 조회
+  const buckets = await getMyBucketList(userId, page);
+  
+  // 2. 내 적금통 통계 조회
+  const counts = await getMyBucketCount(userId);
+  
+  // 3. 응답 데이터 포맷팅
+  const response = formatMyBucketListResponse(buckets, counts, page);
+  
+  // 4. 성공 응답
+  res.status(200).json({
+    message: '내 적금통 목록 조회 성공',
+    ...response
   });
 });

@@ -21,3 +21,15 @@ export const updateCharacterSchema = Joi.object({
     'number.positive': '유효하지 않은 모자 아이템입니다.'
   })
 });
+
+// 내 적금통 목록 조회 쿼리 검증 
+export const myBucketsQuerySchema = Joi.object({
+  page: Joi.number().integer().min(1).default(1).messages({
+    'number.base': 'page는 숫자여야 합니다.',
+    'number.integer': 'page는 정수여야 합니다.',
+    'number.min': 'page는 1 이상이어야 합니다.'
+  }),
+  status: Joi.string().valid('all', 'in_progress', 'success', 'failed').default('all').messages({
+    'any.only': 'status는 all, in_progress, success, failed 중 하나여야 합니다.'
+  })
+});
