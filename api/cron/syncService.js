@@ -1,6 +1,7 @@
 import { query, pool } from '../database/postgreSQL.js';
 import { shinhanRequestWithUser } from '../externalAPI/makeHeader.js';
 import { decrypt } from '../util/encryption.js';
+import { notifyPaymentSuccess, notifyPaymentFailed } from '../util/notification/index.js';
 
 // ============== 활성 적금통 조회 ==============
 export const getActiveBuckets = async () => {
@@ -204,6 +205,10 @@ export const syncSingleBucket = async (bucket) => {
       // API 호출 실패 (404 등) - 적금통 실패 처리
       if (apiError.status === 404 || apiError.status === 400) {
         await markBucketAsFailed(bucket.id);
+        
+        // ✨ 실패 알림 생성
+        await notifyPaymentFailed(bucket.user_id, bucket, 'API 접근 실패로 적금통이 비활성화되었습니다.');
+        
         return { 
           success: true, 
           bucketId: bucket.id, 
@@ -222,6 +227,10 @@ export const syncSingleBucket = async (bucket) => {
     // 4. 만료일 체크 - 만료되었으면 성공 처리
     if (paymentData.isExpired) {
       await markBucketAsSuccess(bucket.id);
+      
+      // ✨ 성공 알림 생성 (만료로 인한 완료)
+      await notifyPaymentSuccess(bucket.user_id, bucket, paymentData.totalBalance);
+      
       return { 
         success: true, 
         bucketId: bucket.id, 
@@ -233,6 +242,23 @@ export const syncSingleBucket = async (bucket) => {
     // 5. 납입 정보 변경 시에만 DB 업데이트
     if (hasPaymentChanged(bucket, paymentData)) {
       await updateBucketPayments(bucket.id, paymentData);
+      
+      // ✨ 납입 상태 변화에 따른 알림 생성
+      const successIncreased = paymentData.successCount > bucket.success_payment;
+      const failIncreased = paymentData.failCount > bucket.fail_payment;
+      
+      if (successIncreased) {
+        // 성공한 납입이 증가한 경우
+        const newSuccessCount = paymentData.successCount - bucket.success_payment;
+        await notifyPaymentSuccess(bucket.user_id, bucket, `${newSuccessCount}회의 새로운 납입`);
+      }
+      
+      if (failIncreased) {
+        // 실패한 납입이 증가한 경우
+        const newFailCount = paymentData.failCount - bucket.fail_payment;
+        await notifyPaymentFailed(bucket.user_id, bucket, `${newFailCount}회의 납입이 실패했습니다. 계좌 잔액을 확인해주세요.`);
+      }
+      
       return { 
         success: true, 
         bucketId: bucket.id, 
@@ -253,6 +279,14 @@ export const syncSingleBucket = async (bucket) => {
     
   } catch (error) {
     console.error(`❌ Sync failed for bucket ${bucket.id} (${bucket.name}):`, error.message);
+    
+    // ✨ 크론 동기화 실패 알림 (심각한 오류인 경우만)
+    try {
+      await notifyPaymentFailed(bucket.user_id, bucket, '적금통 동기화 중 오류가 발생했습니다. 고객센터에 문의해주세요.');
+    } catch (notifyError) {
+      console.error(`❌ Failed to send error notification for bucket ${bucket.id}:`, notifyError.message);
+    }
+    
     return { 
       success: false, 
       bucketId: bucket.id, 
