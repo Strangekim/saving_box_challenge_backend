@@ -1,4 +1,5 @@
 import { processUserAction } from './achievementService.js';
+import { notifyAchievement } from './notification/index.js';
 
 
 // ============== 업적 처리 후 응답 가로채기 함수 ==============
@@ -20,6 +21,14 @@ export const handleAchievementResponse = async (req, res, actionType, actionData
     const achievementResult = await processUserAction(userId, actionType, actionData);
     
     if (achievementResult.newAchievements.length > 0) {
+
+      // 각 업적마다 알림 생성 (읽음 처리된 상태로)
+      for (const unlock of achievementResult.newAchievements) {
+        await notifyAchievement(userId, {
+          achievementId: unlock.achievement.id,
+          achievementTitle: unlock.achievement.title
+        });
+        }
       // 다시 한 번 응답 상태 확인
       if (res.headersSent) {
         return false;

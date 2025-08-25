@@ -204,43 +204,23 @@ CREATE TABLE saving_bucket.comment (
     created_at TIMESTAMP DEFAULT NOW()                       -- 작성 시각
 );
 
-[
-    {
-        "accountTypeUniqueNo":"001-3-29802e64e42943",
-        "bankCode":"088",
-        "bankName":"신한은행",
-        "accountTypeCode":"2",
-        "accountTypeName":"예금",
-        "accountName":"헤이영 우대금리 적금통",
-        "accountDescription": "
-        {
-            'is_challenge' : 'false', 
-            'description' : '헤이영 우대금리가 적용되는 기본 예금입니다.'
-        }
-        ",
-        "subscriptionPeriod":"50",
-        "minSubscriptionBalance":"10000",
-        "maxSubscriptionBalance":"1000000",
-        "interestRate":"10",
-        "rateDescription":"10%의 이자를 지급합니다."
-    },
-    {
-        "accountTypeUniqueNo":"088-3-e4b8d1dbedd141",
-        "bankCode":"088",
-        "bankName":"신한은행",
-        "accountTypeCode":"3",
-        "accountTypeName":"적금",
-        "accountName":"2025 여름방학 적금 챌린지",
-        "accountDescription": "
-        {
-            'is_challenge' : 'true', 
-            'description' : '신한은행 여름방학 적금 챌린지 입니다. 챌린지 1위 대학에는 2학기 대학 행사를 신한은행에서 지원합니다.'
-        }",
-        "subscriptionPeriod":"50",
-        "minSubscriptionBalance":"10000",
-        "maxSubscriptionBalance":"500000",
-        "interestRate":"10",
-        "rateDescription":"10% 우대 금리를 적용합니다.
-        "
-    }
-]
+-- 알림 테이블
+CREATE SCHEMA IF NOT EXISTS notification;
+
+CREATE TABLE notification.list (
+    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users.list(id) ON DELETE CASCADE,
+    type VARCHAR(50) NOT NULL CHECK (type IN ('comment', 'payment_success', 'payment_failed', 'achievement', 'new_challenge')),
+    title VARCHAR(200) NOT NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    read_at TIMESTAMP NULL,
+    related_bucket_id INT REFERENCES saving_bucket.list(id) ON DELETE SET NULL,
+    related_achievement_id INT REFERENCES achievement.list(id) ON DELETE SET NULL,
+    related_comment_id INT REFERENCES saving_bucket.comment(id) ON DELETE SET NULL,
+    sender_id INT REFERENCES users.list(id) ON DELETE SET NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 필수 인덱스만
+CREATE INDEX idx_notification_user_unread ON notification.list (user_id, is_read, created_at DESC);

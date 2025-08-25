@@ -59,6 +59,10 @@
         {
             "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\bucket\\service.js/",
             "color": "foldercolorizer.color_cc33ff"
+        },
+        {
+            "folderPath": "\\\\wsl.localhost\\Ubuntu-22.04\\home\\roger345\\projects\\saving_box_challenge_backend\\api\\notification/",
+            "color": "foldercolorizer.color_ffcc00"
         }
     ]
 }
