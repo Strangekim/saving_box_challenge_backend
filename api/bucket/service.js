@@ -298,30 +298,14 @@ export const updateBucketInDatabase = async (bucketId, updateData) => {
   return result.rows[0];
 };
 
+
 // ============== 적금통 목록 조회 서비스 ==============
 export const getBucketList = async (category, page, userId = null) => {
   const limit = 5;
   const offset = (page - 1) * limit;
   
-  // 현재 사용자의 좋아요 정보 조인 (로그인한 경우만)
-  const userLikeJoin = userId ? 
-    `LEFT JOIN saving_bucket.like AS user_like 
-     ON sb.id = user_like.bucket_id AND user_like.user_id = $3` : '';
-  
-  const userLikeSelect = userId ? 
-    ', CASE WHEN user_like.id IS NOT NULL THEN true ELSE false END as is_liked' : 
-    ', false as is_liked';
-  
-  // 댓글 수 서브쿼리
-  const commentCountSubquery = `
-    LEFT JOIN (
-      SELECT bucket_id, COUNT(*) as comment_count 
-      FROM saving_bucket.comment 
-      GROUP BY bucket_id
-    ) AS comments ON sb.id = comments.bucket_id
-  `;
-  
-  const sqlQuery  = `
+  // 기본 SELECT 절과 JOIN 부분
+  const baseSelect = `
     SELECT 
       -- 적금통 기본 정보
       sb.id,
@@ -359,8 +343,10 @@ export const getBucketList = async (category, page, userId = null) => {
       -- 댓글 수
       COALESCE(comments.comment_count, 0) as comment_count
       
-      ${userLikeSelect}
-      
+      ${userId ? ', CASE WHEN user_like.id IS NOT NULL THEN true ELSE false END as is_liked' : ', false as is_liked'}
+  `;
+
+  const baseJoins = `
     FROM saving_bucket.list AS sb
     
     -- 소유자 정보 조인
@@ -374,40 +360,118 @@ export const getBucketList = async (category, page, userId = null) => {
     LEFT JOIN cosmetic_item.list AS hat_item ON uc.hat_item_id = hat_item.id
     
     -- 댓글 수 조인
-    ${commentCountSubquery}
+    LEFT JOIN (
+      SELECT bucket_id, COUNT(*) as comment_count 
+      FROM saving_bucket.comment 
+      GROUP BY bucket_id
+    ) AS comments ON sb.id = comments.bucket_id
     
-    -- 사용자 좋아요 정보 조인 (로그인한 경우만)
-    ${userLikeJoin}
-    
-    WHERE sb.is_public = true 
-      AND sb.status = 'in_progress'
-    
-    ORDER BY sb.created_at DESC
-    
+    ${userId ? `LEFT JOIN saving_bucket.like AS user_like ON sb.id = user_like.bucket_id AND user_like.user_id = $3` : ''}
+  `;
+
+  // 카테고리별 WHERE 조건과 ORDER BY 설정
+  let whereCondition, orderBy, params;
+
+  switch (category) {
+    case 'recently':
+      // 최신순 (기존 로직)
+      whereCondition = `WHERE sb.is_public = true AND sb.status = 'in_progress'`;
+      orderBy = `ORDER BY sb.created_at DESC`;
+      params = userId ? [limit, offset, userId] : [limit, offset];
+      break;
+      
+    case 'popular':
+      // 좋아요순 (좋아요 많은 순 → 최신순)
+      whereCondition = `WHERE sb.is_public = true AND sb.status = 'in_progress'`;
+      orderBy = `ORDER BY sb.like_count DESC, sb.created_at DESC`;
+      params = userId ? [limit, offset, userId] : [limit, offset];
+      break;
+      
+    case 'my_liked':
+      // 내가 좋아요 누른 적금통만 (로그인 필수)
+      if (!userId) {
+        // 비로그인 사용자는 빈 결과 반환
+        return [];
+      }
+      whereCondition = `
+        WHERE sb.is_public = true 
+          AND sb.status = 'in_progress' 
+          AND user_like.id IS NOT NULL
+      `;
+      orderBy = `ORDER BY user_like.created_at DESC`; // 좋아요 누른 순서로 정렬
+      params = [limit, offset, userId];
+      break;
+      
+    default:
+      // 기본값은 최신순
+      whereCondition = `WHERE sb.is_public = true AND sb.status = 'in_progress'`;
+      orderBy = `ORDER BY sb.created_at DESC`;
+      params = userId ? [limit, offset, userId] : [limit, offset];
+      break;
+  }
+
+  // 최종 쿼리 조합
+  const sqlQuery = `
+    ${baseSelect}
+    ${baseJoins}
+    ${whereCondition}
+    ${orderBy}
     LIMIT $1 OFFSET $2
   `;
-  
-  // 파라미터 설정
-  const params = userId ? [limit, offset, userId] : [limit, offset];
   
   const result = await query(sqlQuery, params);
   return result.rows;
 };
 
-// ============== 전체 개수 조회 서비스 ==============
-export const getBucketListCount = async () => {
-  const countQuery = `
-    SELECT COUNT(*) as total
-    FROM saving_bucket.list 
-    WHERE is_public = true AND status = 'in_progress'
-  `;
+// ============== 카테고리별 전체 개수 조회 서비스 ==============
+export const getBucketListCount = async (category = 'recently', userId = null) => {
+  let countQuery, params;
   
-  const result = await query(countQuery);
+  switch (category) {
+    case 'recently':
+    case 'popular':
+      // 최신순, 좋아요순 둘 다 동일한 기본 조건
+      countQuery = `
+        SELECT COUNT(*) as total
+        FROM saving_bucket.list 
+        WHERE is_public = true AND status = 'in_progress'
+      `;
+      params = [];
+      break;
+      
+    case 'my_liked':
+      // 내가 좋아요 누른 적금통 개수
+      if (!userId) {
+        return 0; // 비로그인 사용자는 0개
+      }
+      countQuery = `
+        SELECT COUNT(*) as total
+        FROM saving_bucket.list sb
+        INNER JOIN saving_bucket.like ul ON sb.id = ul.bucket_id
+        WHERE sb.is_public = true 
+          AND sb.status = 'in_progress'
+          AND ul.user_id = $1
+      `;
+      params = [userId];
+      break;
+      
+    default:
+      // 기본값
+      countQuery = `
+        SELECT COUNT(*) as total
+        FROM saving_bucket.list 
+        WHERE is_public = true AND status = 'in_progress'
+      `;
+      params = [];
+      break;
+  }
+  
+  const result = await query(countQuery, params);
   return parseInt(result.rows[0].total);
 };
 
 // ============== 적금통 목록 데이터 포맷팅 서비스 ==============
-export const formatBucketListResponse = (buckets, total, page) => {
+export const formatBucketListResponse = (buckets, total, page, category = 'recently') => {
   const limit = 5;
   const hasNext = (page * limit) < total;
   
@@ -463,7 +527,16 @@ export const formatBucketListResponse = (buckets, total, page) => {
     };
   });
   
+  // 카테고리별 메시지 설정
+  const categoryMessages = {
+    recently: '최신 적금통 목록을 조회했습니다.',
+    popular: '인기 적금통 목록을 조회했습니다. (좋아요순)',
+    my_liked: '내가 좋아요 누른 적금통 목록을 조회했습니다.'
+  };
+  
   return {
+    message: categoryMessages[category] || '적금통 목록을 조회했습니다.',
+    category,
     buckets: formattedBuckets,
     pagination: {
       page,
