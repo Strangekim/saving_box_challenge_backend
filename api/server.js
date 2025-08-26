@@ -9,9 +9,24 @@ import session from 'express-session';
 import { setupCronJobs } from './cron/cronScheduler.js';
 import rankingRouter from './ranking/router.js'; // 추가
 import notificationRouter from './notification/router.js'
+import cors from 'cors';
 
 
 const app = express();
+
+// ============== CORS 설정 (최우선 적용) ==============
+const corsOptions = {
+  origin: [
+    'http://localhost:5173',  // Vite 개발 서버 (요청하신 주소)
+    'http://localhost:3000',  // Create React App 등
+    'http://127.0.0.1:5173',  // IP 주소 버전
+    'http://127.0.0.1:3000'
+  ],
+  credentials: true,  // 세션 쿠키 허용 (로그인용)
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
 
 app.use(express.json());
 
