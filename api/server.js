@@ -17,15 +17,19 @@ const app = express();
 // ============== CORS 설정 (최우선 적용) ==============
 const corsOptions = {
   origin: [
-    'http://localhost:5173',  // Vite 개발 서버 (요청하신 주소)
-    'http://localhost:3000',  // Create React App 등
-    'http://127.0.0.1:5173',  // IP 주소 버전
-    'http://127.0.0.1:3000'
+    'http://localhost:5173',      // Vite 개발 서버 (로컬 개발용)
+    'http://localhost:3000',      // Create React App 등 (로컬 개발용)
+    'http://127.0.0.1:5173',      // IP 주소 버전 (로컬)
+    'http://127.0.0.1:3000',      // IP 주소 버전 (로컬)
+    'https://localhost:5173',     // HTTPS 버전 (로컬)
+    'https://127.0.0.1:5173'      // HTTPS IP 버전 (로컬)
   ],
   credentials: true,  // 세션 쿠키 허용 (로그인용)
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
+
+app.use(cors(corsOptions));
 
 
 app.use(express.json());
