@@ -35,7 +35,8 @@ app.use(session({
   saveUninitialized: false,
   cookie: { 
     secure: false, // HTTPS에서는 true
-    maxAge: 1 * 60 * 60 * 1000 // 1시간
+    maxAge: 1 * 60 * 60 * 1000, // 1시간
+    sameSite: 'none'  // 클라이언트와 서버가 다른 도메인일 때는 'none'으로 설정 (HTTPS 필요)
   }
 }));
 
