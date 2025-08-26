@@ -171,6 +171,21 @@ export const updateBucket = trycatchWrapper(async (req, res) => {
 export const getBucketListController = trycatchWrapper(async (req, res) => {
   const { category, page } = req.query;
   const userId = req.session?.userId || null; // 로그인한 경우만 사용자 ID 가져오기
+
+  // my_liked 카테고리인데 로그인하지 않은 경우 에러 응답
+  if (category === 'my_liked' && !userId) {
+    return res.status(401).json({
+      message: '내가 좋아요 누른 목록을 보려면 로그인이 필요합니다.',
+      category,
+      buckets: [],
+      pagination: {
+        page,
+        limit: 5,
+        total: 0,
+        has_next: false
+      }
+    });
+  }
   
   // 1. 적금통 목록 조회
   const buckets = await getBucketList(category, page, userId);

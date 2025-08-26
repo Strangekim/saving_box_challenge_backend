@@ -59,10 +59,19 @@ export const savingsSchemas = {
     })
   }),
 
-  // 목록 조회 쿼리 검증
+  // 목록 조회 쿼리 검증 
   listQuery: Joi.object({
-    category: Joi.string().valid('recently').default('recently'),
-    page: Joi.number().integer().min(1).default(1)
+    category: Joi.string()
+      .valid('recently', 'popular', 'my_liked')
+      .default('recently')
+      .messages({
+        'any.only': 'category는 recently, popular, my_liked 중 하나여야 합니다.'
+      }),
+    page: Joi.number().integer().min(1).default(1).messages({
+      'number.base': 'page는 숫자여야 합니다.',
+      'number.integer': 'page는 정수여야 합니다.',
+      'number.min': 'page는 1 이상이어야 합니다.'
+    })
   }),
 
 };
