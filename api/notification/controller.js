@@ -2,7 +2,8 @@ import { trycatchWrapper } from '../util/trycatchWrapper.js';
 import { 
   getUserNotifications,
   markAllNotificationsAsRead,
-  getNotificationCounts
+  getNotificationCounts,
+  deleteNotification
 } from './service.js';
 
 // ============== 알림 목록 조회 ==============
@@ -51,5 +52,30 @@ export const markAllNotificationsAsReadController = trycatchWrapper(async (req, 
   
   res.status(200).json({
     updatedCount: result.updatedCount
+  });
+});
+
+// ============== 알림 단일 삭제 ============== ✨ 새로 추가
+export const deleteNotificationController = trycatchWrapper(async (req, res) => {
+  const userId = req.session?.userId;
+  const notificationId = parseInt(req.params.id);
+  
+  if (!userId) {
+    return res.status(401).json({
+      message: '로그인이 필요합니다'
+    });
+  }
+  
+  if (!notificationId || isNaN(notificationId)) {
+    return res.status(400).json({
+      message: '유효하지 않은 알림 ID입니다'
+    });
+  }
+  
+  const deletedNotification = await deleteNotification(userId, notificationId);
+  
+  res.status(200).json({
+    message: '알림이 삭제되었습니다',
+    deletedNotification
   });
 });
