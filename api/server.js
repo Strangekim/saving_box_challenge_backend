@@ -32,12 +32,15 @@ const PORT = process.env.PORT;
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true,  // false → true로 변경 (쿠키 생성 강제)
   cookie: { 
-    secure: false, // HTTPS에서는 true
-    maxAge: 1 * 60 * 60 * 1000, // 1시간
-    sameSite: 'none'  // 클라이언트와 서버가 다른 도메인일 때는 'none'으로 설정 (HTTPS 필요)
-  }
+    secure: false,           // HTTP에서는 false
+    httpOnly: false,         // 디버깅을 위해 일시적으로 false (JavaScript 접근 허용)
+    maxAge: 24 * 60 * 60 * 1000,  // 24시간
+    sameSite: 'none',        // Cross-origin 필수!
+    domain: undefined        // 도메인 제한 해제
+  },
+  name: 'connect.sid'        // Express 기본 세션 이름
 }));
 
 
