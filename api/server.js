@@ -9,9 +9,23 @@ import session from 'express-session';
 import { setupCronJobs } from './cron/cronScheduler.js';
 import rankingRouter from './ranking/router.js'; // 추가
 import notificationRouter from './notification/router.js'
+import cors from 'cors';
 
 
 const app = express();
+
+// ============== CORS 설정 (최우선 적용) ==============
+
+app.set('trust proxy', 1);
+const corsOptions = {
+  origin: true,  // 모든 origin 허용 (개발용)
+  credentials: true,  // 세션 쿠키 허용 (로그인용)
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
+
 
 app.use(express.json());
 
@@ -21,13 +35,15 @@ app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { 
-    secure: false, // HTTPS에서는 true
-    maxAge: 1 * 60 * 60 * 1000 // 1시간
-  }
+  name: 'connect.sid',
+  cookie: {
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'none',   // ← 크로스사이트 허용 (Vercel/localhost에서 접근)
+    secure: true        // ← cloudflared가 TLS 종단이므로 true
+    // domain: 설정하지 마세요 (임시 도메인/trycloudflare에서 꼬임)
+  },
 }));
-
-
 // 상태 체크
 app.get("/", (_req, res) => res.json({ ok: true, msg: "API alasdasdive" }));
 app.get("/health", (_req, res) => res.json({ status: "force push 를 막겠습니다." }));
