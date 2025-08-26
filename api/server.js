@@ -15,6 +15,8 @@ import cors from 'cors';
 const app = express();
 
 // ============== CORS 설정 (최우선 적용) ==============
+
+app.set('trust proxy', 1);
 const corsOptions = {
   origin: true,  // 모든 origin 허용 (개발용)
   credentials: true,  // 세션 쿠키 허용 (로그인용)
@@ -32,18 +34,16 @@ const PORT = process.env.PORT;
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
-  saveUninitialized: false,       // 로그인 시 생성 권장
+  saveUninitialized: false,
   name: 'connect.sid',
   cookie: {
     httpOnly: true,
-    maxAge: 24*60*60*1000,
-    secure: false,                // HTTP 이므로 false
-    sameSite: 'lax',              // 같은 사이트에서만 전송
-    // domain: 설정하지 마세요 (로컬에서 깨짐)
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'none',   // ← 크로스사이트 허용 (Vercel/localhost에서 접근)
+    secure: true        // ← cloudflared가 TLS 종단이므로 true
+    // domain: 설정하지 마세요 (임시 도메인/trycloudflare에서 꼬임)
   },
 }));
-
-
 // 상태 체크
 app.get("/", (_req, res) => res.json({ ok: true, msg: "API alasdasdive" }));
 app.get("/health", (_req, res) => res.json({ status: "force push 를 막겠습니다." }));
