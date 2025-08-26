@@ -74,3 +74,33 @@ export const markAllNotificationsAsRead = async (userId) => {
     updatedCount: result.rows.length
   };
 };
+
+// ============== 알림 단일 삭제 ============== ✨ 새로 추가
+export const deleteNotification = async (userId, notificationId) => {
+  // 1. 알림 존재 및 소유권 확인
+  const checkResult = await query(`
+    SELECT id, type, title, message, created_at
+    FROM notification.list 
+    WHERE id = $1 AND user_id = $2
+  `, [notificationId, userId]);
+  
+  if (checkResult.rows.length === 0) {
+    throw customError(404, '알림을 찾을 수 없습니다');
+  }
+  
+  const notification = checkResult.rows[0];
+  
+  // 2. 알림 삭제
+  await query(`
+    DELETE FROM notification.list 
+    WHERE id = $1 AND user_id = $2
+  `, [notificationId, userId]);
+  
+  return {
+    id: notification.id,
+    type: notification.type,
+    title: notification.title,
+    message: notification.message,
+    created_at: notification.created_at
+  };
+};
