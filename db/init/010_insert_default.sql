@@ -90,3 +90,85 @@ INSERT INTO achievement.reward (achievement_id, item_id) VALUES
 
 -- 9. ACH_PUSH_5 (적금 5회 달성) -> 용의 머리장식 모자 (신규)
 (9, 12);
+
+-- 각 대학별 학과 데이터 삽입 (대학마다 7개씩)
+
+-- 한양대학교 (id=1) 학과들
+INSERT INTO users.major (university_id, name, code) VALUES
+(1, '컴퓨터소프트웨어학부', 'CSE'),
+(1, '전자공학부', 'EE'),
+(1, '기계공학부', 'ME'),
+(1, '건축학부', 'ARCH'),
+(1, '경영학부', 'BIZ'),
+(1, '화학공학과', 'ChE'),
+(1, '산업공학과', 'IE');
+
+-- 홍익대학교 (id=2) 학과들  
+INSERT INTO users.major (university_id, name, code) VALUES
+(2, '컴퓨터공학과', 'CS'),
+(2, '전자전기공학부', 'EEE'),
+(2, '기계시스템디자인공학과', 'MSD'),
+(2, '건축학과', 'ARCH'),
+(2, '경영학과', 'BA'),
+(2, '화학공학과', 'CE'),
+(2, '산업디자인학과', 'ID');
+
+-- 동국대학교 (id=3) 학과들
+INSERT INTO users.major (university_id, name, code) VALUES
+(3, '컴퓨터공학과', 'CE'),
+(3, '전자전기공학부', 'EE'),
+(3, '기계로봇에너지공학과', 'MRE'),
+(3, '건축공학부', 'AE'),
+(3, '경영학부', 'BM'),
+(3, '화공생물공학과', 'CBE'),
+(3, '산업시스템공학과', 'ISE');
+
+-- 이화여자대학교 (id=4) 학과들
+INSERT INTO users.major (university_id, name, code) VALUES
+(4, '컴퓨터공학과', 'CSE'),
+(4, '전자공학과', 'EE'),
+(4, '기계공학과', 'ME'),
+(4, '건축학과', 'ARCH'),
+(4, '경영학부', 'BUS'),
+(4, '화학신소재공학과', 'CHEM'),
+(4, '수학과', 'MATH');
+
+-- 한국외국어대학교 (id=5) 학과들
+INSERT INTO users.major (university_id, name, code) VALUES
+(5, '컴퓨터전자시스템공학부', 'CESE'),
+(5, '디지털정보공학과', 'DIE'),
+(5, '국제경영학과', 'IBM'),
+(5, '영어통번역학과', 'EIT'),
+(5, '중국어과', 'CHN'),
+(5, '일본어과', 'JPN'),
+(5, '글로벌경영학과', 'GM');
+
+-- 경기대학교 (id=6) 학과들
+INSERT INTO users.major (university_id, name, code) VALUES
+(6, '컴퓨터공학부', 'CE'),
+(6, '전자공학과', 'EE'),
+(6, '기계시스템공학과', 'MSE'),
+(6, '건축공학과', 'AE'),
+(6, '경영학과', 'BIZ'),
+(6, '화학공학과', 'ChE'),
+(6, '산업경영공학과', 'IME');
+
+-- 신한대학교 (id=7) 학과들
+INSERT INTO users.major (university_id, name, code) VALUES
+(7, '컴퓨터공학부', 'CS'),
+(7, '전기전자공학과', 'EE'),
+(7, '기계자동차융합공학과', 'MACE'),
+(7, '건축학부', 'ARCH'),
+(7, '글로벌경영학과', 'GBM'),
+(7, '바이오융합공학과', 'BCE'),
+(7, '디자인학부', 'DES');
+
+-- 숭실대학교 (id=8) 학과들
+INSERT INTO users.major (university_id, name, code) VALUES
+(8, '컴퓨터학부', 'CS'),
+(8, '전자정보공학부', 'EIE'),
+(8, '기계공학부', 'ME'),
+(8, '건축학부', 'ARCH'),
+(8, '경영학부', 'BUS'),
+(8, '화학공학과', 'ChE'),
+(8, '산업정보시스템공학과', 'IISE');

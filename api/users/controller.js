@@ -60,6 +60,13 @@ export const signUp = trycatchWrapper(async (req, res) => {
     );
     const randomUniversity = universityResult.rows[0];
 
+    // 선택된 대학의 랜덤 학과 선택
+    const majorResult = await client.query(
+      'SELECT id, name FROM users.major WHERE university_id = $1 ORDER BY RANDOM() LIMIT 1',
+      [randomUniversity.id]
+    );
+    const randomMajor = majorResult.rows[0];
+
     // 7. userKey 암호화
     const encryptedUserKey = encrypt(createResult.userKey);
 
@@ -69,7 +76,8 @@ export const signUp = trycatchWrapper(async (req, res) => {
       nickname,
       encryptedUserKey,
       accountNo: accountResult.REC.accountNo,
-      universityId: randomUniversity.id
+      universityId: randomUniversity.id,
+      majorId: randomMajor.id
     });
 
     // 9. 사용자 업적 추적 초기화
@@ -89,7 +97,8 @@ export const signUp = trycatchWrapper(async (req, res) => {
         email: user.email,
         nickname: user.nickname,
         accountNo: user.withdrawalaccountno,
-        university: randomUniversity.name
+        university: randomUniversity.name,
+        major: randomMajor.name
       }
     });
 
