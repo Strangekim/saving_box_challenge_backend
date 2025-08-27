@@ -380,7 +380,7 @@ export const getBucketList = async (category, page, userId = null) => {
       params = userId ? [limit, offset, userId] : [limit, offset];
       break;
       
-    case 'popular':
+    case 'like':
       // 좋아요순 (좋아요 많은 순 → 최신순)
       whereCondition = `WHERE sb.is_public = true AND sb.status = 'in_progress'`;
       orderBy = `ORDER BY sb.like_count DESC, sb.created_at DESC`;
@@ -429,7 +429,7 @@ export const getBucketListCount = async (category = 'recently', userId = null) =
   
   switch (category) {
     case 'recently':
-    case 'popular':
+    case 'like':
       // 최신순, 좋아요순 둘 다 동일한 기본 조건
       countQuery = `
         SELECT COUNT(*) as total
@@ -530,7 +530,7 @@ export const formatBucketListResponse = (buckets, total, page, category = 'recen
   // 카테고리별 메시지 설정
   const categoryMessages = {
     recently: '최신 적금통 목록을 조회했습니다.',
-    popular: '인기 적금통 목록을 조회했습니다. (좋아요순)',
+    like: '인기 적금통 목록을 조회했습니다. (좋아요순)',
     my_liked: '내가 좋아요 누른 적금통 목록을 조회했습니다.'
   };
   
