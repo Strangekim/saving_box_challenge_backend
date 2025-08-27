@@ -62,10 +62,10 @@ export const savingsSchemas = {
   // 목록 조회 쿼리 검증 
   listQuery: Joi.object({
     category: Joi.string()
-      .valid('recently', 'popular', 'my_liked')
+      .valid('recently', 'like', 'my_liked')
       .default('recently')
       .messages({
-        'any.only': 'category는 recently, popular, my_liked 중 하나여야 합니다.'
+        'any.only': 'category는 recently, like, my_liked 중 하나여야 합니다.'
       }),
     page: Joi.number().integer().min(1).default(1).messages({
       'number.base': 'page는 숫자여야 합니다.',
