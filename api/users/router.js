@@ -27,7 +27,7 @@ router.post("/logIn",
 )
 
 // 로그아웃
-router.post("/logout",
+router.delete("/logout",
     logOut
 );
 
