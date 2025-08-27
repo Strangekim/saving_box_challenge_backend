@@ -194,7 +194,7 @@ export const getBucketListController = trycatchWrapper(async (req, res) => {
   const total = await getBucketListCount();
   
   // 3. 응답 데이터 포맷팅
-  const response = formatBucketListResponse(buckets, total, page);
+  const response = formatBucketListResponse(buckets, total, page, category);
   
   // 4. 성공 응답
   res.status(200).json(response);
