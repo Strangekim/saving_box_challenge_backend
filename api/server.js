@@ -4,6 +4,7 @@ dotenv.config();
 import express from "express";
 import bucketRouter from './bucket/router.js';
 import usersRouter from './users/router.js';
+import achievementRouter from './achievement/router.js'
 import { ping, query } from "./database/postgreSQL.js";
 import session from 'express-session';
 import { setupCronJobs } from './cron/cronScheduler.js';
@@ -75,6 +76,8 @@ app.use('/users', usersRouter);
 app.use('/ranking', rankingRouter); 
 
 app.use('/notification', notificationRouter);
+
+app.use('/achievement', achievementRouter)
 
 // ============== 공통 에러 핸들러 ===========
 

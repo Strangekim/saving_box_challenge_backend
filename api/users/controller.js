@@ -118,16 +118,16 @@ export const signUp = trycatchWrapper(async (req, res) => {
 export const logIn = trycatchWrapper(async (req, res) => {
   const { email } = req.body;
   
-  // 1. DB에서 사용자 찾기
+  // 1. DB에서 사용자 찾기 (대학, 학과 정보 포함)
   const user = await findUserByEmail(email);
   
-  // 2. 세션 생성 및 응답 데이터 준비
+  // 2. 세션 생성 및 응답 데이터 준비 (대학, 학과 정보 포함)
   const responseUser = createUserSession(req, user);
 
   // 3. 완료된 적금통 확인
   const completedBuckets = await checkCompletedBucketsForAchievements(user.id);
 
-    if (completedBuckets.length > 0) {
+  if (completedBuckets.length > 0) {
     console.log(`🎯 로그인 시 완료된 적금통 발견: ${completedBuckets.length}개`);
     
     let bucketAchievements = null;
@@ -166,7 +166,7 @@ export const logIn = trycatchWrapper(async (req, res) => {
       // 챌린지 업적이 있으면 챌린지 업적만 응답에 포함
       return res.status(202).json({
         message: '로그인 성공! 새로운 챌린지 업적을 달성했습니다!',
-        user: responseUser,
+        user: responseUser, // 대학, 학과 정보 포함
         type: 'challenge_achievement_unlocked',
         achievements: {
           count: challengeAchievements.length,
@@ -195,7 +195,7 @@ export const logIn = trycatchWrapper(async (req, res) => {
       // 일반 적금통 업적만 있으면 일반 업적을 응답에 포함
       return res.status(202).json({
         message: '로그인 성공! 새로운 업적을 달성했습니다!',
-        user: responseUser,
+        user: responseUser, // 대학, 학과 정보 포함
         type: 'achievement_unlocked',
         achievements: {
           count: bucketAchievements.length,
@@ -223,8 +223,7 @@ export const logIn = trycatchWrapper(async (req, res) => {
     }
   }
   
-  
-  // 7. 성공 응답
+  // 7. 성공 응답 (대학, 학과 정보 포함)
   res.json({ 
     message: '로그인 성공', 
     user: responseUser 
