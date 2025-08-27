@@ -127,7 +127,48 @@ export const setupDefaultItems = async (client, userId) => {
 
 // DB: 사용자 조회
 export const findUserByEmail = async (email) => {
-  const result = await query('SELECT * FROM users.list WHERE email = $1', [email]);
+  const result = await query(`
+    SELECT 
+      u.id,
+      u.email,
+      u.nickname,
+      u.userkey,
+      u.withdrawalaccountno,
+      u.university_id,
+      u.major_id,
+      u.created_at,
+      
+      -- 대학 정보
+      uni.name as university_name,
+      
+      -- 학과 정보
+      maj.name as major_name,
+      maj.code as major_code,
+      
+      -- 캐릭터 정보
+      uc.character_item_id,
+      uc.outfit_item_id,
+      uc.hat_item_id,
+      char_item.name as character_name,
+      char_item.description as character_description,
+      outfit_item.name as outfit_name,
+      outfit_item.description as outfit_description,
+      hat_item.name as hat_name,
+      hat_item.description as hat_description
+      
+    FROM users.list u
+    LEFT JOIN users.university uni ON u.university_id = uni.id
+    LEFT JOIN users.major maj ON u.major_id = maj.id
+    
+    -- 캐릭터 정보 조인
+    LEFT JOIN users.character uc ON u.id = uc.user_id
+    LEFT JOIN cosmetic_item.list char_item ON uc.character_item_id = char_item.id
+    LEFT JOIN cosmetic_item.list outfit_item ON uc.outfit_item_id = outfit_item.id
+    LEFT JOIN cosmetic_item.list hat_item ON uc.hat_item_id = hat_item.id
+    
+    WHERE u.email = $1
+  `, [email]);
+  
   
   if (result.rows.length === 0) {
     throw customError(404, '사용자를 찾을 수 없습니다');
@@ -142,7 +183,33 @@ export const createUserSession = (req, user) => {
   return {
     id: user.id,
     email: user.email,
-    nickname: user.nickname
+    nickname: user.nickname,
+    university: {
+      id: user.university_id,
+      name: user.university_name
+    },
+    major: {
+      id: user.major_id,
+      name: user.major_name,
+      code: user.major_code
+    },
+    character: user.character_item_id ? {
+      character_item: {
+        id: user.character_item_id,
+        name: user.character_name,
+        description: user.character_description
+      },
+      outfit_item: {
+        id: user.outfit_item_id,
+        name: user.outfit_name,
+        description: user.outfit_description
+      },
+      hat_item: {
+        id: user.hat_item_id,
+        name: user.hat_name,
+        description: user.hat_description
+      }
+    } : null
   };
 };
 

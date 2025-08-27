@@ -24,21 +24,67 @@ import {
     completeBucketTermination
 } from './service.js';
 
+// ============== 제외할 상품 목록 전역 관리 ==============
+const EXCLUDED_PRODUCTS = {
+  // 제외할 은행 코드들
+  bankCodes: [
+    "001"  // 한국은행
+  ],
+  
+  // 제외할 특정 상품 고유번호들
+  accountTypeUniqueNos: [
+    "088-3-e4b8d1dbedd141"  // 특정 적금 상품
+  ],
+  
+  // 제외 사유 메시지
+  exclusionReasons: {
+    "001": "한국은행 상품은 사용할 수 없습니다.",
+    "088-3-e4b8d1dbedd141": "해당 적금 상품은 현재 이용할 수 없습니다."
+  }
+};
+
+// ============== 상품 필터링 헬퍼 함수 ==============
+const filterExcludedProducts = (products) => {
+  return products.filter(product => {
+    // 은행 코드로 제외
+    if (EXCLUDED_PRODUCTS.bankCodes.includes(product.bankCode)) {
+      return false;
+    }
+    
+    // 특정 상품 고유번호로 제외
+    if (EXCLUDED_PRODUCTS.accountTypeUniqueNos.includes(product.accountTypeUniqueNo)) {
+      return false;
+    }
+    
+    return true;
+  });
+};
+
+// ============== 제외된 상품 검증 헬퍼 함수 ==============
+const validateProductNotExcluded = (product) => {
+  // 은행 코드 체크
+  if (EXCLUDED_PRODUCTS.bankCodes.includes(product.bankCode)) {
+    const reason = EXCLUDED_PRODUCTS.exclusionReasons[product.bankCode] || 
+                  "해당 은행의 상품은 사용할 수 없습니다.";
+    throw customError(400, reason);
+  }
+  
+  // 특정 상품 고유번호 체크
+  if (EXCLUDED_PRODUCTS.accountTypeUniqueNos.includes(product.accountTypeUniqueNo)) {
+    const reason = EXCLUDED_PRODUCTS.exclusionReasons[product.accountTypeUniqueNo] || 
+                  "해당 상품은 현재 이용할 수 없습니다.";
+    throw customError(400, reason);
+  }
+  
+  return true;
+};
+
 // ============== 예금+적금 통합 상품 목록 조회 ==============
 export const inquireAllProducts = trycatchWrapper(async (req, res) => {
   const allProducts = await getAllProducts();
   
-  // 제외할 상품들
-  const excludedProducts = [
-    "001",  // 한국은행 bankCode
-    "088-3-e4b8d1dbedd141"  // 특정 적금 상품 accountTypeUniqueNo
-  ];
-  
-  // 한국은행(bankCode: "001") 및 특정 적금 상품 제외
-  const filteredProducts = allProducts.filter(product => 
-    product.bankCode !== "001" && 
-    product.accountTypeUniqueNo !== "088-3-e4b8d1dbedd141"
-  );
+  // 제외할 상품들 필터링
+  const filteredProducts = filterExcludedProducts(allProducts);
   
   res.status(200).json(filteredProducts);
 });
@@ -60,6 +106,9 @@ export const createBucket = trycatchWrapper(async (req, res) => {
   
   // 1. 상품 존재 및 금액 범위 검증
   const selectedProduct = await validateBucketCreation(accountTypeUniqueNo, target_amount);
+
+  // 2. 제외된 상품인지 검증 ✨ 새로 추가
+  validateProductNotExcluded(selectedProduct);
 
   // 2. 사용자 아이템 보유 검증
   await validateUserItems(userId, character_item_id, outfit_item_id, hat_item_id);
