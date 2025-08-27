@@ -25,6 +25,7 @@ CREATE TABLE users.list (
     nickname VARCHAR(10) NOT NULL,                     -- 닉네임
     userKey VARCHAR(200),                               -- 금융 API에서 발급해주는 고유 키
     university_id INT REFERENCES users.university(id), -- 소속 대학 ID (FK)
+    major_id INT REFERENCES users.major(id), 
     created_at TIMESTAMP DEFAULT NOW(),                -- 가입일시
     withdrawalAccountNo VARCHAR(20) UNIQUE NOT NULL    -- 연결 계좌
 );
@@ -224,3 +225,20 @@ CREATE TABLE notification.list (
 
 -- 필수 인덱스만
 CREATE INDEX idx_notification_user_unread ON notification.list (user_id, is_read, created_at DESC);
+
+-- 사용자 학과 테이블 생성
+CREATE TABLE users.major (
+    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,  -- 학과 고유 ID (자동 증가)
+    university_id INT NOT NULL REFERENCES users.university(id), -- 소속 대학 ID (FK)
+    name VARCHAR(100) NOT NULL,                        -- 학과명 (예: 컴퓨터공학과)
+    code VARCHAR(20),                                  -- 학과 코드 (선택적, 예: CSE)
+    created_at TIMESTAMP DEFAULT NOW(),                -- 등록 일시
+    
+    -- 복합 인덱스로 성능 최적화
+    CONSTRAINT uq_major_univ_name UNIQUE (university_id, name)
+);
+
+-- 성능 최적화를 위한 인덱스 생성
+CREATE INDEX idx_major_university ON users.major(university_id);
+CREATE INDEX idx_users_major ON users.list(major_id);
+CREATE INDEX idx_users_univ_major ON users.list(university_id, major_id);

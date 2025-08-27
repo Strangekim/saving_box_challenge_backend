@@ -14,6 +14,9 @@ import cors from 'cors';
 
 const app = express();
 
+// ============== 환경 확인 ==============
+const isLocalDev = process.env.LOCAL_DEV === 'true';
+
 // ============== CORS 설정 (최우선 적용) ==============
 
 app.set('trust proxy', 1);
@@ -31,6 +34,12 @@ app.use(express.json());
 
 const PORT = process.env.PORT;
 
+// 로컬 개발시에만 프록시 설정 해제
+if (isLocalDev) {
+  delete app.settings['trust proxy'];
+}
+
+
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
@@ -39,11 +48,13 @@ app.use(session({
   cookie: {
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000,
-    sameSite: 'none',   // ← 크로스사이트 허용 (Vercel/localhost에서 접근)
-    secure: true        // ← cloudflared가 TLS 종단이므로 true
-    // domain: 설정하지 마세요 (임시 도메인/trycloudflare에서 꼬임)
+    // 환경별 조건부 설정
+    sameSite: isLocalDev ? 'lax' : 'none',
+    secure: isLocalDev ? false : true
   },
 }));
+
+
 // 상태 체크
 app.get("/", (_req, res) => res.json({ ok: true, msg: "API alasdasdive" }));
 app.get("/health", (_req, res) => res.json({ status: "force push 를 막겠습니다." }));

@@ -73,12 +73,12 @@ export const depositWelcomeMoney = async (userKey, accountNo) => {
 
 // 5. DB: 사용자 기본 정보 생성
 export const createUserData = async (client, userData) => {
-  const { email, nickname, encryptedUserKey, accountNo, universityId } = userData;
+  const { email, nickname, encryptedUserKey, accountNo, universityId, majorId  } = userData;
   
   const dbResult = await client.query(
-    `INSERT INTO users.list (email, nickname, userKey, withdrawalAccountNo, university_id) 
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [email, nickname, encryptedUserKey, accountNo, universityId]
+    `INSERT INTO users.list (email, nickname, userKey, withdrawalAccountNo, university_id, major_id) 
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+    [email, nickname, encryptedUserKey, accountNo, universityId, majorId]
   );
   
   return dbResult.rows[0];
@@ -425,6 +425,10 @@ export const getUserProfile = async (userId) => {
       -- 대학 정보
       uni.id as university_id,
       uni.name as university_name,
+
+      -- 학과 정보 ← 추가
+      maj.id as major_id,
+      maj.name as major_name,
       
       -- 캐릭터 정보
       uc.character_item_id,
@@ -441,6 +445,9 @@ export const getUserProfile = async (userId) => {
     
     -- 대학 정보 조인
     LEFT JOIN users.university uni ON u.university_id = uni.id
+
+    -- 학과 정보 조인 ← 추가
+    LEFT JOIN users.major maj ON u.major_id = maj.id
     
     -- 캐릭터 정보 조인
     LEFT JOIN users.character uc ON u.id = uc.user_id
@@ -468,6 +475,10 @@ export const getUserProfile = async (userId) => {
     university: {
       id: userInfo.university_id,
       name: userInfo.university_name
+    },
+    major: {  
+      id: userInfo.major_id,
+      name: userInfo.major_name
     },
     character: userInfo.character_item_id ? {
       character_item: {
