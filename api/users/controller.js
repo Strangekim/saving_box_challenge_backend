@@ -28,11 +28,7 @@ import {
   // 내 적금통 목록 가져오기
   getMyBucketList,
   getMyBucketCount,
-  formatMyBucketListResponse,
-  changeNickname,
-  checkNickname,
-  addLike, 
-  removeLike
+  formatMyBucketListResponse
 } from './service.js';
 
 // ============== 회원가입 컨트롤러 ==============
@@ -314,84 +310,4 @@ export const getMyBucketListController = trycatchWrapper(async (req, res) => {
     message: '내 적금통 목록 조회 성공',
     ...response
   });
-});
-
-// ============== 닉네임 변경 ==============
-export const updateUserNicknameController = trycatchWrapper(async (req, res) => {
-  const userId = req.session.userId;
-  const { nickname } = req.body
-
-  // 사용자가 변경하려는 닉네임이 기존에 있는지 확인
-  await checkNickname(nickname)
-
-  // DB에서 닉네임 바꾸기
-  const response = await changeNickname(userId, nickname)
-ㄴ
-  res.status(200).json({
-    message: '닉네임 변경 성공',
-    nickname : response.nickname
-  });
-});
-
-// ============== 적금통 좋아요 (토글) ==============
-export const likeController = trycatchWrapper(async (req, res, next) => {
-  // 1) 인증 확인
-  const userId = req.session?.userId;
-  if (!userId) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  // 2) 입력값 검증 (body로 { id }가 온다 가정)
-  const { id } = req.body ?? {};
-  const bucketId = Number(id);
-  if (!bucketId || Number.isNaN(bucketId)) {
-    return res.status(400).json({ error: 'bucket id is required' });
-  }
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-
-    // 3) 서비스 호출 (순서: bucketId, userId, client)
-    const result = await changeLike(bucketId, userId, client);
-
-    await client.query('COMMIT');
-    return res.status(200).json(result); // { liked, likeCount }
-  } catch (err) {
-    try { await client.query('ROLLBACK'); } catch {}
-    // trycatchWrapper가 에러를 받아 처리하도록 던짐
-    throw err;
-  } finally {
-    client.release();
-  }
-});
-
-// ============== 적금통 좋아요 취소 ==============
-export const unlikeController = trycatchWrapper(async (req, res) => {
-  // 인증 체크
-  const userId = req.session?.userId;
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-
-  // 입력값 검증
-  const { id } = req.body ?? {};
-  const bucketId = Number(id);
-  if (!bucketId || Number.isNaN(bucketId)) {
-    return res.status(400).json({ error: 'bucket id is required' });
-  }
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-
-    // 서비스 호출: (bucketId, userId, client)
-    const result = await removeLike(bucketId, userId, client); // { liked:false, likeCount }
-
-    await client.query('COMMIT');
-    return res.status(200).json(result);
-  } catch (err) {
-    try { await client.query('ROLLBACK'); } catch {}
-    throw err; // trycatchWrapper에서 처리
-  } finally {
-    client.release();
-  }
 });
