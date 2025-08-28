@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { validateSchema } from '../util/validateSchema.js';
-import { loginSchema,updateCharacterSchema,myBucketsQuerySchema,nicknameSchema, likeParamsSchema} from './schema.js';
+import { loginSchema,updateCharacterSchema,myBucketsQuerySchema  } from './schema.js';
 import { requireAuth } from '../util/auth.js';
 import { 
     logIn,
@@ -9,10 +9,7 @@ import {
     getUserInventoryController,
     updateUserCharacterController,
     getUserProfileController,
-    getMyBucketListController,
-    updateUserNicknameController,
-    likeController, 
-    unlikeController
+    getMyBucketListController
 } from './controller.js';
 
 const router = Router();
@@ -60,31 +57,4 @@ router.get("/buckets",
     getMyBucketListController
 );
 
-// 닉네임 변경하기
-router.patch(
-    requireAuth,
-    validateSchema(nicknameSchema),
-    updateUserNicknameController
-);
 export default router;
-
-// 적금통 좋아요 생성
-router.post("/buckets",
-    requireAuth,
-    validateSchema(likeSchema),
-    validateSchema(postIdParamSchema),
-    likeController
-);
-
-router.post("/buckets/:id/like", 
-    requireAuth,
-    validateSchema(likeParamsSchema, 'params'),
-    likeController
-);
-
-// 적금통 좋아요 삭제
-router.delete("/buckets/:id/like", 
-    requireAuth,
-    validateSchema(likeParamsSchema, 'params'),
-    unlikeController
-);
