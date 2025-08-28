@@ -21,7 +21,9 @@ import {
     validateBucketTermination,
     deleteShinhanDepositAccount,
     deleteShinhanSavingsAccount,
-    completeBucketTermination
+    completeBucketTermination,
+    enrichProductsWithParticipationStatus,
+    validateChallengeParticipationOnCreate
 } from './service.js';
 
 // ============== 제외할 상품 목록 전역 관리 ==============
@@ -79,15 +81,39 @@ const validateProductNotExcluded = (product) => {
   return true;
 };
 
-// ============== 예금+적금 통합 상품 목록 조회 ==============
+// ============== 챌린지 상품 판별 헬퍼 함수 ==============
+const extractIsChallengeFromDescription = (accountDescription) => {
+  try {
+    // accountDescription이 JSON 문자열 형태라고 가정
+    const parsed = JSON.parse(accountDescription);
+    return parsed.is_challenge === 'true';
+  } catch (error) {
+    // JSON 파싱 실패 시 기본값 false 반환
+    return false;
+  }
+};
+
+// api/bucket/controller.js - 예적금 상품 목록 조회 컨트롤러 
 export const inquireAllProducts = trycatchWrapper(async (req, res) => {
+  const userId = req.session?.userId;
+  
+  // 로그인 필수로 변경
+  if (!userId) {
+    throw customError(401, '상품 목록을 조회하려면 로그인이 필요합니다.');
+  }
+  
+  // 1. 모든 상품 조회
   const allProducts = await getAllProducts();
   
-  // 제외할 상품들 필터링
+  // 2. 제외할 상품들 필터링
   const filteredProducts = filterExcludedProducts(allProducts);
   
-  res.status(200).json(filteredProducts);
+  // 3. 챌린지 참여 정보 추가
+  const productsWithStatus = await enrichProductsWithParticipationStatus(filteredProducts, userId);
+  
+  res.status(200).json(productsWithStatus);
 });
+
 
 // ============== 적금통 생성 ==============
 export const createBucket = trycatchWrapper(async (req, res) => {
@@ -102,7 +128,7 @@ export const createBucket = trycatchWrapper(async (req, res) => {
     outfit_item_id,
     hat_item_id 
   } = req.body;
-  const userId = req.session.userId; // 세션에서 사용자 ID 가져오기
+  const userId = req.session.userId; 
   
   // 1. 상품 존재 및 금액 범위 검증
   const selectedProduct = await validateBucketCreation(accountTypeUniqueNo, target_amount);
@@ -110,13 +136,16 @@ export const createBucket = trycatchWrapper(async (req, res) => {
   // 2. 제외된 상품인지 검증 ✨ 새로 추가
   validateProductNotExcluded(selectedProduct);
 
-  // 2. 사용자 아이템 보유 검증
+  // 3. 챌린지 중복 참여 검증 (수정된 함수 사용)
+  await validateChallengeParticipationOnCreate(userId, accountTypeUniqueNo, selectedProduct);
+
+  // 4. 사용자 아이템 보유 검증
   await validateUserItems(userId, character_item_id, outfit_item_id, hat_item_id);
   
-  // 3. 신한 적금 계좌 생성
+  // 5. 신한 적금 계좌 생성
   const accountInfo = await createSavingsAccount(userId, accountTypeUniqueNo, target_amount);
   
-  // 4. DB에 적금통 정보 저장
+  // 6. DB에 적금통 정보 저장
   const bucketData = {
     userId,
     name,
