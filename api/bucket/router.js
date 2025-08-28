@@ -20,6 +20,7 @@ const router = Router();
 
 // 예 적금 상품 조회
 router.get("/create_list",
+    requireAuth,
     inquireAllProducts
 )
 

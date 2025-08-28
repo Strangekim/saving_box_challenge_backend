@@ -1244,3 +1244,90 @@ export const completeBucketTermination = async (bucketId, deleteApiResponse) => 
   }
 };
 
+// ============== 챌린지 참여 기록 확인 (핵심 추상화 함수) ==============
+export const checkChallengeParticipationHistory = async (userId, accountTypeUniqueNo) => {
+  const participationQuery = `
+    SELECT 
+      sb.id,
+      sb.name,
+      sb.status,
+      sb.created_at
+    FROM saving_bucket.list sb
+    WHERE sb.user_id = $1 
+      AND sb.accounttypeuniqueNo = $2
+      AND sb.is_challenge = true
+    LIMIT 1  -- 존재 여부만 확인
+  `;
+  
+  const result = await query(participationQuery, [userId, accountTypeUniqueNo]);
+  
+  if (result.rows.length === 0) {
+    return {
+      has_participated: false,
+      can_participate: true,
+      latest_participation: null
+    };
+  }
+  
+  const latestParticipation = result.rows[0];
+  
+  return {
+    has_participated: true,
+    can_participate: false, // 한 번이라도 참여했으면 불가
+    latest_participation: latestParticipation
+  };
+};
+
+// ============== 상품에 챌린지 참여 정보 추가하는 함수 ==============
+export const enrichProductsWithParticipationStatus = async (products, userId) => {
+  const enrichedProducts = [];
+  
+  for (const product of products) {
+    // 챌린지 상품인지 확인
+    const isChallenge = extractIsChallengeFromDescription(product.accountDescription);
+    
+    let participationStatus = null;
+    
+    if (isChallenge && userId) {
+      // 챌린지 상품이고 로그인한 사용자인 경우 참여 기록 확인
+      participationStatus = await checkChallengeParticipationHistory(userId, product.accountTypeUniqueNo);
+    }
+    
+    enrichedProducts.push({
+      ...product,
+      is_challenge: isChallenge,
+      participation_status: participationStatus
+    });
+  }
+  
+  return enrichedProducts;
+};
+
+// ============== 챌린지 중복 참여 검증 함수 (수정) ==============
+export const validateChallengeParticipationOnCreate = async (userId, accountTypeUniqueNo, productInfo) => {
+  // 1. 챌린지 상품이 아니면 검증 통과
+  if (!extractIsChallengeFromDescription(productInfo.accountDescription)) {
+    return true;
+  }
+  
+  // 2. 참여 기록 확인 (추상화된 함수 사용)
+  const participationStatus = await checkChallengeParticipationHistory(userId, accountTypeUniqueNo);
+  
+  if (participationStatus.has_participated) {
+    const latest = participationStatus.latest_participation;
+    const statusText = {
+      'in_progress': '진행 중',
+      'success': '완료',
+      'failed': '실패'
+    }[latest.status] || latest.status;
+    
+    throw customError(409, 
+      `이미 해당 챌린지에 참여한 기록이 있습니다. ` +
+      `이전 참여: "${latest.name}" (${statusText}) - ` +
+      `진행률: ${latest.progress_rate}%. ` +
+      `각 챌린지는 1회만 참여 가능합니다.`
+    );
+  }
+  
+  return true;
+};
