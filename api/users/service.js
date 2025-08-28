@@ -7,6 +7,8 @@ import { generateUniqueNickname } from '../util/nicknameGenerator.js';
 import { encrypt } from '../util/encryption.js';
 import { validateUserItems } from '../bucket/service.js';
 
+import { pool } from '../database/postgreSQL.js';
+
 
 // 1. 신한 API: 계정 중복 체크
 export const checkShinhanAccountExists = async (email) => {
@@ -658,6 +660,134 @@ export const getMyBucketCount = async (userId) => {
   const result = await query(countQuery, [userId]);
   return result.rows[0];
 };
+
+
+// ============== 닉네임 변경 ==============
+export const changeNickname = async (userId, nickname) => {
+  const changeNicknameQuery = `
+    UPDATE users.list
+    SET nickname = $2
+    WHERE id = $1
+    RETURNING *
+  `;
+
+  const result = await query(changeNicknameQuery, [userId, nickname]);
+  return result.rows[0]
+};
+
+// ============== 닉네임 중복 확인 ==============
+export const checkNickname = async (nickname) => {
+  const checkNicknameQuery = `
+  SELECT * FROM users.list WHERE nickname = $1
+  `
+
+  const result = await query(checkNicknameQuery, [nickname]);
+  if(result.rows.length > 0){
+    throw customError(409, '이미 존재하는 닉네임입니다');
+  }
+
+};
+
+// ============== 좋아요 수 변경 ==============
+/** 좋아요 생성 (멱등: 이미 있으면 영향 0) */
+export async function addLike(bucket_id, user_id) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 버킷 존재 + 잠금 : 레이스 컨디션 방지
+    const b = await client.query(
+      `SELECT id, like_count FROM saving_bucket.list WHERE id = $1 FOR UPDATE`,
+      [bucket_id]
+    );
+    if (b.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return { status: 404, body: { error: 'Bucket not found' } };
+    }
+
+    // 좋아요 생성(UPSERT) — 이미 있으면 DO NOTHING
+    const ins = await client.query(
+      `INSERT INTO saving_bucket."like" (bucket_id, user_id)
+       VALUES ($1, $2)
+       ON CONFLICT (bucket_id, user_id) DO NOTHING`,
+      [bucket_id, user_id]
+    );
+
+    // 새로 생겼을 때만 카운터 +1
+    if (ins.rowCount === 1) {
+      await client.query(
+        `UPDATE saving_bucket.list
+         SET like_count = like_count + 1
+         WHERE id = $1`,
+        [bucket_id]
+      );
+    }
+
+    // 최신 카운트
+    const c = await client.query(
+      `SELECT like_count FROM saving_bucket.list WHERE id = $1`,
+      [bucket_id]
+    );
+
+    await client.query('COMMIT');
+    return { status: 200, body: { liked: true, likeCount: c.rows[0].like_count } };
+  } catch (e) {
+    await pool.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+/** 좋아요 취소 (멱등: 없으면 영향 0) */
+export async function removeLike(bucket_id, user_id) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // 버킷 존재 + 잠금
+    const b = await client.query(
+      `SELECT id, like_count FROM saving_bucket.list WHERE id = $1 FOR UPDATE`,
+      [bucket_id]
+    );
+    if (b.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return { status: 404, body: { error: 'Bucket not found' } };
+    }
+
+    // 삭제 (없으면 영향 0)
+    const del = await client.query(
+      `DELETE FROM saving_bucket."like"
+       WHERE bucket_id = $1 AND user_id = $2`,
+      [bucket_id, user_id]
+    );
+
+    // 실제 삭제됐을 때만 -1 (음수 방지)
+    if (del.rowCount === 1) {
+      await client.query(
+        `UPDATE saving_bucket.list
+         SET like_count = GREATEST(like_count - 1, 0)
+         WHERE id = $1`,
+        [bucket_id]
+      );
+    }
+
+    // 최신 카운트
+    const c = await client.query(
+      `SELECT like_count FROM saving_bucket.list WHERE id = $1`,
+      [bucket_id]
+    );
+
+    await client.query('COMMIT');
+    return { status: 200, body: { liked: false, likeCount: c.rows[0].like_count } };
+  } catch (e) {
+    await pool.query('ROLLBACK');
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
 
 // ============== 내 적금통 목록 응답 포맷팅 ==============
 export const formatMyBucketListResponse = (buckets, counts, page) => {
