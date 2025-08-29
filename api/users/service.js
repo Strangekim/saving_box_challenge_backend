@@ -743,13 +743,14 @@ export const changeNickname = async (userId, nickname) => {
 };
 
 // ============== 닉네임 중복 확인 ==============
-export const checkNickname = async (nickname) => {
+export const checkNickname = async (nickname, userId) => {
   const checkNicknameQuery = `
-  SELECT * FROM users.list WHERE nickname = $1
-  `
-
+    SELECT id FROM users.list WHERE nickname = $1
+  `;
   const result = await query(checkNicknameQuery, [nickname]);
-  if(result.rows.length > 0){
+
+  // 다른 유저가 쓰고 있는 경우에만 에러
+  if (result.rows.length > 0 && result.rows[0].id !== userId) {
     throw customError(409, '이미 존재하는 닉네임입니다');
   }
 };
