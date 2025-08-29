@@ -33,6 +33,9 @@ import {
     getCommentWithUserInfo
 } from './service.js';
 
+const { processUserAction } = await import('../util/achievementService.js');
+const { notifyAchievement } = await import('../util/notification/index.js');
+
 // ============== 제외할 상품 목록 전역 관리 ==============
 const EXCLUDED_PRODUCTS = {
   // 제외할 은행 코드들
@@ -383,12 +386,36 @@ export const toggleBucketLikeController = trycatchWrapper(async (req, res) => {
   // 1. 좋아요 토글 처리
   const result = await toggleBucketLike(bucketId, userId);
   
-  // 2. 업적 처리 (좋아요를 준 경우만)
+  // 2. 좋아요를 새로 추가한 경우에만 업적 처리
   if (result.action === 'added') {
-    // 좋아요 업적 처리 시도
+    // 2-1. 좋아요를 받은 사람의 업적 처리 (본인이 아닌 경우만)
+    if (result.bucket.owner_id !== userId) {
+      try {
+        const achievementResult = await processUserAction(result.bucket.owner_id, 'receive_like', {
+          bucketId: bucketId,
+          likerId: userId
+        });
+        
+        // 업적 달성 시에만 알림 생성
+        if (achievementResult.newAchievements && achievementResult.newAchievements.length > 0) {
+          for (const unlock of achievementResult.newAchievements) {
+            await notifyAchievement(result.bucket.owner_id, {
+              achievementId: unlock.achievement.id,
+              achievementTitle: unlock.achievement.title,
+              achievementCode: unlock.achievement.code
+            });
+          }
+        }
+      } catch (achievementError) {
+        console.error('좋아요 받기 업적 처리 실패:', achievementError);
+        // 업적 처리 실패해도 좋아요 기능은 정상 동작
+      }
+    }
+    
+    // 2-2. 좋아요를 누른 사람의 업적 처리 (기존 로직 유지)
     const achievementHandled = await handleLikeAchievement(req, res, {
       bucketId: bucketId,
-      targetUserId: null // 필요시 적금통 소유자 ID 추가 가능
+      targetUserId: result.bucket.owner_id
     });
     
     if (achievementHandled) {
