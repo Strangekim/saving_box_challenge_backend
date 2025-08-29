@@ -1413,13 +1413,14 @@ export const toggleBucketLike = async (bucketId, userId) => {
     bucket: {
       id: bucketId,
       name: bucketInfo.name,
-      like_count: newLikeCount
+      like_count: newLikeCount,
+      owner_id: bucketInfo.user_id
     },
     is_liked: !isCurrentlyLiked // 새로운 상태
   };
 };
 
-// ============== 적금통 좋아요 토글 서비스 ==============
+// ============== 적금통 댓글 달기 ==============
 export const createBucketComment = async (bucketId, userId, content) => {
   const client = await pool.connect();
 

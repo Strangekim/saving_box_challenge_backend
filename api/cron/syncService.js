@@ -2,6 +2,8 @@ import { query, pool } from '../database/postgreSQL.js';
 import { shinhanRequestWithUser } from '../externalAPI/makeHeader.js';
 import { decrypt } from '../util/encryption.js';
 import { notifyPaymentSuccess, notifyPaymentFailed } from '../util/notification/index.js';
+import { processUserAction } from '../util/achievementService.js';
+import { notifyAchievement } from '../util/notification/index.js';
 
 // ============== 활성 적금통 조회 ==============
 export const getActiveBuckets = async () => {
@@ -126,6 +128,7 @@ export const markBucketAsFailed = async (bucketId) => {
   console.log(`❌ Bucket ${bucketId} marked as FAILED (API access failed)`);
 };
 
+
 // ============== 적금통 성공 처리 ==============
 export const markBucketAsSuccess = async (bucketId) => {
   const client = await pool.connect();
@@ -154,33 +157,47 @@ export const markBucketAsSuccess = async (bucketId) => {
       WHERE id = $1
     `, [bucketId]);
     
-    // 3. 사용자 업적 추적 테이블 업데이트
-    if (isChallenge) {
-      // 챌린지 상품인 경우: 성공 적금통 + 챌린지 성공 모두 증가
-      await client.query(`
-        UPDATE users.metrics 
-        SET 
-          success_bucket_count = success_bucket_count + 1,
-          challenge_success_count = challenge_success_count + 1,
-          updated_at = NOW()
-        WHERE user_id = $1
-      `, [bucket.user_id]);
-      
-      console.log(`🏆 Bucket ${bucketId} (${bucket.name}) marked as SUCCESS - Challenge completed!`);
-    } else {
-      // 일반 상품인 경우: 성공 적금통만 증가
-      await client.query(`
-        UPDATE users.metrics 
-        SET 
-          success_bucket_count = success_bucket_count + 1,
-          updated_at = NOW()
-        WHERE user_id = $1
-      `, [bucket.user_id]);
-      
-      console.log(`✅ Bucket ${bucketId} (${bucket.name}) marked as SUCCESS (expired)`);
-    }
-    
     await client.query('COMMIT');
+    
+    // 3. 업적 처리 (트랜잭션 외부에서 처리)
+    try {
+      let achievementResult;
+      
+      if (isChallenge) {
+        // 챌린지 상품인 경우: 챌린지 완료 업적 처리
+        achievementResult = await processUserAction(bucket.user_id, 'complete_challenge', {
+          challengeId: bucketId,
+          bucketName: bucket.name
+        });
+        
+        console.log(`🏆 Bucket ${bucketId} (${bucket.name}) marked as SUCCESS - Challenge completed!`);
+      } else {
+        // 일반 상품인 경우: 적금통 완료 업적 처리
+        achievementResult = await processUserAction(bucket.user_id, 'complete_bucket', {
+          bucketId: bucketId,
+          bucketName: bucket.name
+        });
+        
+        console.log(`✅ Bucket ${bucketId} (${bucket.name}) marked as SUCCESS (expired)`);
+      }
+      
+      // 4. 업적 달성 시 읽지 않은 알림 생성
+      if (achievementResult.newAchievements && achievementResult.newAchievements.length > 0) {
+        for (const unlock of achievementResult.newAchievements) {
+          await notifyAchievement(bucket.user_id, {
+            achievementId: unlock.achievement.id,
+            achievementTitle: unlock.achievement.title,
+            achievementCode: unlock.achievement.code
+          });
+        }
+        
+        console.log(`🎉 업적 달성 알림 생성 - 사용자 ${bucket.user_id}: ${achievementResult.newAchievements.length}개 업적`);
+      }
+      
+    } catch (achievementError) {
+      console.error(`❌ 업적 처리 실패 - Bucket ${bucketId}:`, achievementError.message);
+      // 업적 처리 실패해도 적금통 성공 처리는 유지
+    }
     
   } catch (error) {
     await client.query('ROLLBACK');

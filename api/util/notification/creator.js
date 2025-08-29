@@ -1,6 +1,14 @@
 import { query } from "../../database/postgreSQL.js";
 import { NOTIFICATION_TYPES,formatMessage } from "./templates.js";
 
+// 수동적 업적 목록 (읽지 않은 상태로 생성할 업적들)
+const PASSIVE_ACHIEVEMENTS = [
+  'ACH_FIRST_GET_LIKE',        // 첫 좋아요 받기
+  'ACH_FIRST_BUCKET_SUCCESS',  // 첫 적금통 성공
+  'ACH_FIRST_CHALLENGE',       // 첫 챌린지 성공
+  // 향후 추가될 수 있는 수동적 업적들
+];
+
 // 단일 알림 생성
 export const createNotification = async (userId, notificationType, data) => {
   const typeConfig = NOTIFICATION_TYPES[notificationType];
@@ -21,9 +29,21 @@ export const createNotification = async (userId, notificationType, data) => {
   const message = formatMessage(typeConfig.messageTemplate, data);
   const relatedIds = typeConfig.getRelatedIds(data);
 
-  // 업적 알림은 자동으로 읽음 처리
-  const isRead = notificationType === 'ACHIEVEMENT';
-  const readAt = isRead ? new Date() : null;
+  // 업적 알림의 읽음 상태 결정
+  let isRead = false;
+  let readAt = null;
+  
+  if (notificationType === 'ACHIEVEMENT') {
+    const isPassiveAchievement = data.achievementCode && 
+      PASSIVE_ACHIEVEMENTS.includes(data.achievementCode);
+    
+    if (!isPassiveAchievement) {
+      // 능동적 업적은 읽음 처리 (기존 로직)
+      isRead = true;
+      readAt = new Date();
+    }
+    // 수동적 업적은 읽지 않은 상태 (isRead = false, readAt = null)
+  }
   
   // DB 저장
   const result = await query(`
@@ -42,8 +62,8 @@ export const createNotification = async (userId, notificationType, data) => {
     relatedIds.related_comment_id,
     relatedIds.related_achievement_id,
     relatedIds.sender_id,
-    isRead,     // 업적이면 true
-    readAt      // 업적이면 현재 시간
+    isRead,
+    readAt
   ]);
   
   return result.rows[0];
