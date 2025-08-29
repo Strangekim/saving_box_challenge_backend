@@ -33,7 +33,7 @@ export const handleAchievementResponse = async (req, res, actionType, actionData
       if (res.headersSent) {
         return false;
       }
-      
+      console.log("actionData",actionData)
       // 기본 응답 데이터와 업적 정보를 합친 응답
       const achievementResponse = {
         // 원래 응답 데이터가 있으면 포함
@@ -55,7 +55,9 @@ export const handleAchievementResponse = async (req, res, actionType, actionData
               itemName: reward.item_name,
               itemType: reward.item_type_name
             }))
-          }))
+          })),
+          comment: actionData.comment || null,
+          commentId : actionData.commentId || null
         }
       };
       
@@ -101,7 +103,8 @@ export const handleLikeAchievement = async (req, res, likeData) => {
 export const handleCommentAchievement = async (req, res, commentData) => {
   return handleAchievementResponse(req, res, 'create_comment', {
     bucketId: req.params.bucketId,
-    commentId: commentData.id
+    commentId: commentData.id,
+    comment : commentData.content
   });
 };
 

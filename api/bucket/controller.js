@@ -337,7 +337,7 @@ export const getBucketDetailController = trycatchWrapper(async (req, res) => {
   }
   
   // 6. 실시간 동기화 수행
-  const syncResult = await syncBucketDetailData(bucket);
+  // const syncResult = await syncBucketDetailData(bucket);
   
   // 7. 동기화 후 최신 상태의 적금통 상세 정보 조회
   const bucketDetailInfo = await getBucketDetailInfo(bucketId, userId);
@@ -490,7 +490,8 @@ export const createBucketCommentController = trycatchWrapper(async (req, res) =>
   // 5. 댓글 작성 업적 처리 및 응답 가로채기 시도
   const achievementHandled = await handleCommentAchievement(req, res, {
     id: comment.id,
-    bucketId: bucket.id
+    bucketId: bucket.id,
+    content : content
   });
   
   // 6. 업적이 달성되지 않았으면 일반 응답
