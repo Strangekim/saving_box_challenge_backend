@@ -59,7 +59,7 @@ router.get("/buckets",
 );
 
 // 닉네임 변경하기
-router.patch(
+router.patch("/nickname",
     requireAuth,
     validateSchema(nicknameSchema),
     updateUserNicknameController
