@@ -1536,3 +1536,88 @@ export const getCommentWithUserInfo = async (commentId) => {
     }
   };
 };
+
+// ============== 댓글 수정 서비스 ==============
+export const updateBucketComment = async (commentId, userId, newContent) => {
+  // 1. 댓글 존재 및 소유권 확인
+  const commentResult = await query(`
+    SELECT 
+      c.id,
+      c.user_id,
+      c.content,
+      c.bucket_id,
+      c.created_at,
+      sb.is_public
+    FROM saving_bucket.comment c
+    LEFT JOIN saving_bucket.list sb ON c.bucket_id = sb.id
+    WHERE c.id = $1
+  `, [commentId]);
+  
+  if (commentResult.rows.length === 0) {
+    throw customError(404, '존재하지 않는 댓글입니다.');
+  }
+  
+  const comment = commentResult.rows[0];
+  
+  // 2. 소유권 확인
+  if (comment.user_id !== userId) {
+    throw customError(403, '댓글 수정 권한이 없습니다.');
+  }
+  
+  // 3. 적금통이 비공개로 변경되었는지 확인
+  if (!comment.is_public) {
+    throw customError(403, '비공개 적금통의 댓글은 수정할 수 없습니다.');
+  }
+  
+  // 4. 댓글 내용 업데이트
+  const updateResult = await query(`
+    UPDATE saving_bucket.comment 
+    SET content = $1
+    WHERE id = $2 AND user_id = $3
+    RETURNING *
+  `, [newContent, commentId, userId]);
+  
+  // 5. 수정된 댓글 상세 정보 조회
+  const updatedCommentInfo = await getCommentWithUserInfo(commentId);
+  
+  return updatedCommentInfo;
+};
+
+// ============== 댓글 삭제 서비스 ==============
+export const deleteBucketComment = async (commentId, userId) => {
+  // 1. 댓글 존재 및 소유권 확인
+  const commentResult = await query(`
+    SELECT 
+      c.id,
+      c.user_id,
+      c.content,
+      c.bucket_id,
+      c.created_at
+    FROM saving_bucket.comment c
+    WHERE c.id = $1
+  `, [commentId]);
+  
+  if (commentResult.rows.length === 0) {
+    throw customError(404, '존재하지 않는 댓글입니다.');
+  }
+  
+  const comment = commentResult.rows[0];
+  
+  // 2. 소유권 확인
+  if (comment.user_id !== userId) {
+    throw customError(403, '댓글 삭제 권한이 없습니다.');
+  }
+  
+  // 3. 댓글 삭제
+  await query(`
+    DELETE FROM saving_bucket.comment 
+    WHERE id = $1 AND user_id = $2
+  `, [commentId, userId]);
+  
+  return {
+    id: comment.id,
+    content: comment.content,
+    created_at: comment.created_at,
+    bucket_id: comment.bucket_id
+  };
+};
