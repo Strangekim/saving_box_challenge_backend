@@ -75,6 +75,20 @@ export const markAllNotificationsAsRead = async (userId) => {
   };
 };
 
+// ============== 단일 알림 읽음 처리 ==============
+export const markOneNotificationsAsRead = async(userId,notificationId) => {
+  const result = await query(`
+    UPDATE notification.list 
+    SET is_read = true, read_at = NOW()
+    WHERE user_id = $1 AND is_read = false AND id = $2
+    RETURNING id
+  `, [userId,notificationId]);
+  
+  return {
+    updatedCount: result.rows.length
+  };
+}
+
 // ============== 알림 단일 삭제 ============== ✨ 새로 추가
 export const deleteNotification = async (userId, notificationId) => {
   // 1. 알림 존재 및 소유권 확인
