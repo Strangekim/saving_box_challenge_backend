@@ -322,7 +322,7 @@ export const updateUserNicknameController = trycatchWrapper(async (req, res) => 
   const { nickname } = req.body
 
   // 사용자가 변경하려는 닉네임이 기존에 있는지 확인
-  await checkNickname(nickname)
+  await checkNickname(nickname, userId);
 
   // DB에서 닉네임 바꾸기
   const response = await changeNickname(userId, nickname)
