@@ -728,3 +728,28 @@ export const formatMyBucketListResponse = (buckets, counts, page) => {
     }
   };
 };
+
+// ============== 닉네임 변경 ==============
+export const changeNickname = async (userId, nickname) => {
+  const changeNicknameQuery = `
+    UPDATE users.list
+    SET nickname = $2
+    WHERE id = $1
+    RETURNING *
+  `;
+
+  const result = await query(changeNicknameQuery, [userId, nickname]);
+  return result.rows[0]
+};
+
+// ============== 닉네임 중복 확인 ==============
+export const checkNickname = async (nickname) => {
+  const checkNicknameQuery = `
+  SELECT * FROM users.list WHERE nickname = $1
+  `
+
+  const result = await query(checkNicknameQuery, [nickname]);
+  if(result.rows.length > 0){
+    throw customError(409, '이미 존재하는 닉네임입니다');
+  }
+};

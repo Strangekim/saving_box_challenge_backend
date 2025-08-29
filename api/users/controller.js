@@ -28,7 +28,10 @@ import {
   // 내 적금통 목록 가져오기
   getMyBucketList,
   getMyBucketCount,
-  formatMyBucketListResponse
+  formatMyBucketListResponse,
+  // 닉네임 변경
+  checkNickname,
+  changeNickname
 } from './service.js';
 
 // ============== 회원가입 컨트롤러 ==============
@@ -309,5 +312,23 @@ export const getMyBucketListController = trycatchWrapper(async (req, res) => {
   res.status(200).json({
     message: '내 적금통 목록 조회 성공',
     ...response
+  });
+});
+
+
+// ============== 닉네임 변경 ==============
+export const updateUserNicknameController = trycatchWrapper(async (req, res) => {
+  const userId = req.session.userId;
+  const { nickname } = req.body
+
+  // 사용자가 변경하려는 닉네임이 기존에 있는지 확인
+  await checkNickname(nickname)
+
+  // DB에서 닉네임 바꾸기
+  const response = await changeNickname(userId, nickname)
+
+  res.status(200).json({
+    message: '닉네임 변경 성공',
+    nickname : response.nickname
   });
 });

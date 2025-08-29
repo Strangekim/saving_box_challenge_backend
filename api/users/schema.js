@@ -4,6 +4,18 @@ export const loginSchema = Joi.object({
   email: Joi.string().email().max(40).required()
 });
 
+export const nicknameSchema = Joi.object({
+  nickname: Joi.string().trim().min(1).max(10) .pattern(/^[\p{Script=Hangul}A-Za-z0-9_-]+$/u) // 한글/영문/숫자/_/-
+    .required()
+}).messages({
+  'string.base': '닉네임은 문자열이어야 합니다.',
+  'string.empty': '닉네임을 입력해주세요.',
+  'string.min': '닉네임은 최소 {#limit}자 이상이어야 합니다.',
+  'string.max': '닉네임은 최대 {#limit}자까지 가능합니다.',
+  'string.pattern.base': '닉네임은 한글/영문/숫자/(_,-)만 사용할 수 있어요.',
+  'any.required': '닉네임은 필수 값입니다.'
+});
+
 export const updateCharacterSchema = Joi.object({
   character_item_id: Joi.number().integer().positive().required().messages({
     'any.required': '캐릭터 아이템을 선택해주세요.',
