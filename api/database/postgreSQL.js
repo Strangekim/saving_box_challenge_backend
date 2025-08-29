@@ -14,9 +14,9 @@ export const pool = new Pool({
   host: POSTGRES_HOST,
   database: POSTGRES_DB,
   port: Number(POSTGRES_PORT),
-  max: 5,  // 20에서 10으로 줄이기
+  max: 5,  
   min: 1,
-  idleTimeoutMillis: 10000,  // 더 빠른 해제
+  idleTimeoutMillis: 10000,  
   acquireTimeoutMillis: 5000
 });
 
