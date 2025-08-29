@@ -17,7 +17,7 @@ export const NOTIFICATION_TYPES = {
     type: 'achievement',
     titleTemplate: '🎉 업적 달성!',
     messageTemplate: '"{achievementTitle}" 업적을 달성했습니다!',
-    requiredFields: ['achievementId', 'achievementTitle'],
+    requiredFields: ['achievementId', 'achievementTitle'], // ✨ achievementCode는 선택적 필드로 변경
     getRelatedIds: (data) => ({
       related_bucket_id: null,
       related_comment_id: null,
