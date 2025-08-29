@@ -56,8 +56,10 @@ export const handleAchievementResponse = async (req, res, actionType, actionData
               itemType: reward.item_type_name
             }))
           })),
-          comment: actionData.comment || null,
-          commentId : actionData.commentId || null
+        },
+        comment : {
+          id : actionData.commentId || null,
+          content : actionData.comment || null
         }
       };
       
