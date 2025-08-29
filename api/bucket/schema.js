@@ -37,7 +37,7 @@ export const savingsSchemas = {
     // 아바타/코스메틱 아이템 (선택)
     character_item_id: Joi.number().integer().positive().required(),
     outfit_item_id:   Joi.number().integer().positive().required(),
-    hat_item_id:      Joi.number().integer().positive().required(),
+    hat_item_id:      Joi.number().integer().positive().required()
   }),
 
   // 적금통 수정하기 검증
