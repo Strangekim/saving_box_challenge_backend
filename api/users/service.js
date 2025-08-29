@@ -448,7 +448,6 @@ export const updateUserCharacter = async (userId, characterData) => {
 
 // ============== 사용자 프로필 조회 서비스 ==============
 export const getUserProfile = async (userId) => {
-  // 사용자 정보 + 캐릭터 + 대학 정보 조회
   const profileQuery = `
     SELECT 
       -- 사용자 기본 정보 (계좌번호 제외)
@@ -458,60 +457,74 @@ export const getUserProfile = async (userId) => {
       u.created_at,
       
       -- 대학 정보
-      uni.id as university_id,
-      uni.name as university_name,
+      uni.id  AS university_id,
+      uni.name AS university_name,
 
-      -- 학과 정보 ← 추가
-      maj.id as major_id,
-      maj.name as major_name,
+      -- 학과 정보
+      maj.id  AS major_id,
+      maj.name AS major_name,
       
       -- 캐릭터 정보
       uc.character_item_id,
       uc.outfit_item_id,
       uc.hat_item_id,
-      char_item.name as character_name,
-      char_item.description as character_description,
-      outfit_item.name as outfit_name,
-      outfit_item.description as outfit_description,
-      hat_item.name as hat_name,
-      hat_item.description as hat_description
+      char_item.name        AS character_name,
+      char_item.description AS character_description,
+      outfit_item.name        AS outfit_name,
+      outfit_item.description AS outfit_description,
+      hat_item.name        AS hat_name,
+      hat_item.description AS hat_description,
+
+      -- 포인트: metrics의 카운트 합 × 100 (없으면 0)
+      (
+        (
+          COALESCE(m.bucket_count, 0)
+        + COALESCE(m.count_like_sum, 0)
+        + COALESCE(m.get_like_sum, 0)
+        + COALESCE(m.challenge_success_count, 0)
+        + COALESCE(m.comment_count, 0)
+        + COALESCE(m.bucket_push_count, 0)
+        + COALESCE(m.success_bucket_count, 0)
+        ) * 100
+      )::INT AS point
       
     FROM users.list u
     
-    -- 대학 정보 조인
+    -- 대학/학과 정보
     LEFT JOIN users.university uni ON u.university_id = uni.id
-
-    -- 학과 정보 조인 ← 추가
-    LEFT JOIN users.major maj ON u.major_id = maj.id
+    LEFT JOIN users.major      maj ON u.major_id = maj.id
     
-    -- 캐릭터 정보 조인
+    -- 캐릭터 정보
     LEFT JOIN users.character uc ON u.id = uc.user_id
-    LEFT JOIN cosmetic_item.list char_item ON uc.character_item_id = char_item.id
-    LEFT JOIN cosmetic_item.list outfit_item ON uc.outfit_item_id = outfit_item.id
-    LEFT JOIN cosmetic_item.list hat_item ON uc.hat_item_id = hat_item.id
+    LEFT JOIN cosmetic_item.list char_item   ON uc.character_item_id = char_item.id
+    LEFT JOIN cosmetic_item.list outfit_item ON uc.outfit_item_id   = outfit_item.id
+    LEFT JOIN cosmetic_item.list hat_item    ON uc.hat_item_id      = hat_item.id
+
+    -- 메트릭스
+    LEFT JOIN users.metrics m ON m.user_id = u.id
     
     WHERE u.id = $1
   `;
-  
+
   const result = await query(profileQuery, [userId]);
-  
   if (result.rows.length === 0) {
     throw customError(404, '사용자 정보를 찾을 수 없습니다.');
   }
-  
+
   const userInfo = result.rows[0];
-  
-  // 응답 데이터 포맷팅
+
+  // 응답 포맷
   return {
     id: userInfo.id,
     email: userInfo.email,
     nickname: userInfo.nickname,
     created_at: userInfo.created_at,
+    point: Number(userInfo.point), // 안전하게 숫자로 변환
     university: {
       id: userInfo.university_id,
       name: userInfo.university_name
     },
-    major: {  
+    major: {
       id: userInfo.major_id,
       name: userInfo.major_name
     },
