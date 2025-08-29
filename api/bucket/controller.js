@@ -30,7 +30,9 @@ import {
     validateChallengeParticipationOnCreate,
     toggleBucketLike,
     createBucketComment,
-    getCommentWithUserInfo
+    getCommentWithUserInfo,
+    updateBucketComment,
+    deleteBucketComment
 } from './service.js';
 
 const { processUserAction } = await import('../util/achievementService.js');
@@ -483,4 +485,44 @@ export const createBucketCommentController = trycatchWrapper(async (req, res) =>
   if (!achievementHandled) {
     res.status(201).json(responseData);
   }
+});
+
+// ============== 댓글 수정 컨트롤러 ==============
+export const updateBucketCommentController = trycatchWrapper(async (req, res) => {
+  const bucketId = parseInt(req.params.id);
+  const commentId = parseInt(req.params.commentId);
+  const userId = req.session.userId;
+  const { content } = req.body;
+  
+  // 1. 댓글 수정 처리
+  const updatedComment = await updateBucketComment(commentId, userId, content);
+  
+  // 2. 성공 응답
+  res.status(200).json({
+    success: true,
+    message: '댓글이 성공적으로 수정되었습니다.',
+    comment: updatedComment
+  });
+});
+
+// ============== 댓글 삭제 컨트롤러 ==============
+export const deleteBucketCommentController = trycatchWrapper(async (req, res) => {
+  const bucketId = parseInt(req.params.id);
+  const commentId = parseInt(req.params.commentId);
+  const userId = req.session.userId;
+  
+  // 1. 댓글 삭제 처리
+  const deletedComment = await deleteBucketComment(commentId, userId);
+  
+  // 2. 성공 응답
+  res.status(200).json({
+    success: true,
+    message: '댓글이 성공적으로 삭제되었습니다.',
+    deletedComment: {
+      id: deletedComment.id,
+      content: deletedComment.content,
+      created_at: deletedComment.created_at,
+      bucket_id: deletedComment.bucket_id
+    }
+  });
 });

@@ -7,7 +7,9 @@ import {
   getBucketDetailController,
   terminateBucket,
   toggleBucketLikeController,
-  createBucketCommentController
+  createBucketCommentController,
+  updateBucketCommentController,
+  deleteBucketCommentController
  } from './controller.js';
 import { 
   validateSchema, 
@@ -80,6 +82,24 @@ router.post("/:id/comments",
   createBucketCommentController
 );
 
+// 댓글 수정
+router.patch("/:id/comments/:commentId", 
+  requireAuth,
+  validate({
+    params: idParam().concat(savingsSchemas.commentIdParam),
+    body: savingsSchemas.updateComment
+  }),
+  updateBucketCommentController
+);
+
+// 댓글 삭제
+router.delete("/:id/comments/:commentId", 
+  requireAuth,
+  validate({
+    params: idParam().concat(savingsSchemas.commentIdParam)
+  }),
+  deleteBucketCommentController
+);
 
 
 export default router;

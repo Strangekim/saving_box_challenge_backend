@@ -74,4 +74,33 @@ export const savingsSchemas = {
     })
   }),
 
+    bucketComment : Joi.object({
+    content: Joi.string().trim().min(1).max(500).required().messages({
+      'any.required': 'content는 필수입니다.',
+      'string.base': 'content는 문자열이어야 합니다.',
+      'string.empty': 'content는 비워둘 수 없습니다.',
+      'string.min': 'content는 최소 1자 이상이어야 합니다.',
+      'string.max': 'content는 최대 500자까지 가능합니다.',
+    })
+  }),
+
+  updateComment: Joi.object({
+    content: Joi.string().trim().min(1).max(500).required().messages({
+      'any.required': 'content는 필수입니다.',
+      'string.base': 'content는 문자열이어야 합니다.',
+      'string.empty': 'content는 비워둘 수 없습니다.',
+      'string.min': 'content는 최소 1자 이상이어야 합니다.',
+      'string.max': 'content는 최대 500자까지 가능합니다.',
+    })
+  }),
+
+  commentIdParam: Joi.object({
+    commentId: Joi.number().integer().positive().required().messages({
+      'any.required': '댓글 ID는 필수입니다.',
+      'number.base': '댓글 ID는 숫자여야 합니다.',
+      'number.integer': '댓글 ID는 정수여야 합니다.',
+      'number.positive': '댓글 ID는 양수여야 합니다.'
+    })
+  }),
+
 };
