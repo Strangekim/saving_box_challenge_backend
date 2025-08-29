@@ -117,6 +117,33 @@ export const createSavingsAccount = async (userId, accountTypeUniqueNo, depositB
   };
 };
 
+// ============== 신한 적금 계좌 생성 서비스 ==============
+export const createDepositAccount = async (userId, accountTypeUniqueNo, depositBalance) => {
+  // 1. 사용자 정보 조회
+  const { userKey, withdrawalAccountNo } = await getUserInfo(userId);
+  
+  // 2. 신한 API로 적금 계좌 생성
+  const accountResult = await shinhanRequestWithUser({
+    path: '/edu/deposit/createDepositAccount',
+    userKey,
+    json: {
+      withdrawalAccountNo,
+      accountTypeUniqueNo,
+      depositBalance: depositBalance.toString()
+    }
+  });
+  
+  if (!accountResult?.REC?.accountNo) {
+    throw customError(500, '예금 계좌 생성에 실패했습니다.');
+  }
+  
+  return {
+    accountNo: accountResult.REC.accountNo,
+    userKey,
+    withdrawalAccountNo
+  };
+};
+
 // ============== 사용자 아이템 보유 검증 서비스 ==============
 export const validateUserItems = async (userId, characterItemId, outfitItemId, hatItemId) => {
   // 1. 입력받은 모든 아이템 ID들

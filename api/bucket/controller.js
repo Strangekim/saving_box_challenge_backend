@@ -32,7 +32,8 @@ import {
     createBucketComment,
     getCommentWithUserInfo,
     updateBucketComment,
-    deleteBucketComment
+    deleteBucketComment,
+    createDepositAccount
 } from './service.js';
 
 const { processUserAction } = await import('../util/achievementService.js');
@@ -127,6 +128,7 @@ export const inquireAllProducts = trycatchWrapper(async (req, res) => {
 });
 
 
+
 // ============== 적금통 생성 ==============
 export const createBucket = trycatchWrapper(async (req, res) => {
   const { 
@@ -138,24 +140,35 @@ export const createBucket = trycatchWrapper(async (req, res) => {
     is_public,
     character_item_id,
     outfit_item_id,
-    hat_item_id 
+    hat_item_id
   } = req.body;
   const userId = req.session.userId; 
   
   // 1. 상품 존재 및 금액 범위 검증
   const selectedProduct = await validateBucketCreation(accountTypeUniqueNo, target_amount);
 
-  // 2. 제외된 상품인지 검증 ✨ 새로 추가
+  // 2. 제외된 상품인지 검증
   validateProductNotExcluded(selectedProduct);
 
-  // 3. 챌린지 중복 참여 검증 (수정된 함수 사용)
+  // 3. 챌린지 중복 참여 검증
   await validateChallengeParticipationOnCreate(userId, accountTypeUniqueNo, selectedProduct);
 
   // 4. 사용자 아이템 보유 검증
   await validateUserItems(userId, character_item_id, outfit_item_id, hat_item_id);
   
-  // 5. 신한 적금 계좌 생성
-  const accountInfo = await createSavingsAccount(userId, accountTypeUniqueNo, target_amount);
+  // 5. 상품 타입에 따른 계좌 생성
+  let accountInfo;
+  const accountTypeCode = selectedProduct.accountTypeCode;
+  
+  if (accountTypeCode === '3') {
+    // 적금 계좌 생성
+    accountInfo = await createSavingsAccount(userId, accountTypeUniqueNo, target_amount);
+  } else if (accountTypeCode === '2') {
+    // 예금 계좌 생성
+    accountInfo = await createDepositAccount(userId, accountTypeUniqueNo, target_amount);
+  } else {
+    throw customError(400, '지원하지 않는 계좌 타입입니다.');
+  }
   
   // 6. DB에 적금통 정보 저장
   const bucketData = {
@@ -172,7 +185,7 @@ export const createBucket = trycatchWrapper(async (req, res) => {
 
   const savedBucket = await saveBucketToDatabase(bucketData, selectedProduct, accountInfo.accountNo);
 
-  // 5. 일반 응답 데이터 준비
+  // 7. 일반 응답 데이터 준비
   const responseData = {
     success: true,
     message: '적금통 생성이 완료되었습니다.',
@@ -193,9 +206,8 @@ export const createBucket = trycatchWrapper(async (req, res) => {
     }
   };
 
-  // 6. 업적 처리 및 응답 가로채기 시도 (기존 데이터 포함)
+  // 8. 업적 처리 및 응답 가로채기 시도 (기존 데이터 포함)
   const achievementHandled = await handleBucketCreationAchievement(req, res, savedBucket, responseData);
-  
   
   if (!achievementHandled) {
     console.log('📤 일반 응답 전송 시도 (201)');
