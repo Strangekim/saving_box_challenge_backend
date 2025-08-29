@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { validateSchema } from '../util/validateSchema.js';
-import { loginSchema,updateCharacterSchema,myBucketsQuerySchema  } from './schema.js';
+import { loginSchema,updateCharacterSchema,myBucketsQuerySchema,nicknameSchema  } from './schema.js';
 import { requireAuth } from '../util/auth.js';
 import { 
     logIn,
@@ -9,7 +9,8 @@ import {
     getUserInventoryController,
     updateUserCharacterController,
     getUserProfileController,
-    getMyBucketListController
+    getMyBucketListController,
+    updateUserNicknameController
 } from './controller.js';
 
 const router = Router();
@@ -55,6 +56,13 @@ router.get("/buckets",
     requireAuth,
     validateSchema(myBucketsQuerySchema),
     getMyBucketListController
+);
+
+// 닉네임 변경하기
+router.patch(
+    requireAuth,
+    validateSchema(nicknameSchema),
+    updateUserNicknameController
 );
 
 export default router;
