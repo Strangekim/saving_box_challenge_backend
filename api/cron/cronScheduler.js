@@ -11,6 +11,18 @@ export const setupCronJobs = () => {
     
     try {
       await syncAllBuckets();
+
+    //  동기화 완료 후 AI 리포트 생성
+    console.log('🤖 AI 리포트 생성 시작...');
+    const response = await fetch('http://localhost:3000/report/generate-ai-report', {
+      method: 'POST'
+    });
+    
+    if (response.ok) {
+      console.log('✅ AI 리포트 생성 완료');
+    } else {
+      console.error('❌ AI 리포트 생성 실패:', response.status);
+    }
     } catch (error) {
       console.error('💥 Daily sync cron failed:', error);
     }
@@ -18,14 +30,6 @@ export const setupCronJobs = () => {
     scheduled: true,
     timezone: "Asia/Seoul"
   });
-  
-  // 개발/테스트용 크론 
-//   cron.schedule('*/1 * * * *', async () => {
-//     console.log('🧪 Test sync every 1 minutes');
-//     await syncAllBuckets();
-//   }, {
-//     timezone: "Asia/Seoul"
-//   });
   
   
   const nextRun = new Date();
