@@ -3,7 +3,8 @@ import {
   getUserNotifications,
   markAllNotificationsAsRead,
   getNotificationCounts,
-  deleteNotification
+  deleteNotification,
+  markOneNotificationsAsRead
 } from './service.js';
 
 // ============== 알림 목록 조회 ==============
@@ -49,6 +50,25 @@ export const markAllNotificationsAsReadController = trycatchWrapper(async (req, 
   }
   
   const result = await markAllNotificationsAsRead(userId);
+  
+  res.status(200).json({
+    updatedCount: result.updatedCount
+  });
+});
+
+// ============== 단일 알림 읽음 처리 ==============
+export const markOneNotificationsAsReadController = trycatchWrapper(async (req, res) => {
+  const userId = req.session?.userId;
+  const notificationId = parseInt(req.params.id);
+  
+  if (!userId) {
+    // 로그인하지 않은 경우 아무것도 하지 않고 성공 응답
+    return res.status(200).json({
+      updatedCount: 0
+    });
+  }
+  
+  const result = await markOneNotificationsAsRead(userId,notificationId);
   
   res.status(200).json({
     updatedCount: result.updatedCount

@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { 
   getNotificationsController,
   markAllNotificationsAsReadController,
-  deleteNotificationController
+  deleteNotificationController,
+  markOneNotificationsAsReadController
 } from './controller.js';
 import { validateParams, validateQuery } from '../util/validateSchema.js';
 import { notificationIdParam } from './schema.js';
@@ -19,6 +20,12 @@ router.patch("/read-all", markAllNotificationsAsReadController);
 router.delete("/:id",
   validateParams(notificationIdParam),
   deleteNotificationController
+);
+
+// 알림 단일 읽기
+router.patch("/:id",
+  validateParams(notificationIdParam),
+  markOneNotificationsAsReadController
 );
 
 export default router;
