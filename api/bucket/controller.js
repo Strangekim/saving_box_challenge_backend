@@ -2,7 +2,8 @@ import { trycatchWrapper } from '../util/trycatchWrapper.js';
 import { customError } from '../util/customError.js';
 import { 
   handleBucketCreationAchievement,
-  handleLikeAchievement 
+  handleLikeAchievement,
+  handleCommentAchievement
 } from '../util/achievementMiddleware.js';
 import { 
     getAllProducts, 
@@ -27,7 +28,9 @@ import {
     completeBucketTermination,
     enrichProductsWithParticipationStatus,
     validateChallengeParticipationOnCreate,
-    toggleBucketLike
+    toggleBucketLike,
+    createBucketComment,
+    getCommentWithUserInfo
 } from './service.js';
 
 // ============== 제외할 상품 목록 전역 관리 ==============
@@ -405,4 +408,52 @@ export const toggleBucketLikeController = trycatchWrapper(async (req, res) => {
     bucket: result.bucket,
     is_liked: result.is_liked
   });
+});
+
+// ============== 적금통 댓글 생성 ==============
+export const createBucketCommentController = trycatchWrapper(async (req, res) => {
+  const bucketId = parseInt(req.params.id);
+  const userId = req.session.userId;
+  const { content } = req.body;
+  
+  // 1. 댓글 생성
+  const { bucket, comment } = await createBucketComment(bucketId, userId, content);
+  
+  // 2. 댓글 상세 정보 조회 (작성자 정보 포함)
+  const commentWithUserInfo = await getCommentWithUserInfo(comment.id);
+  
+  // 3. 적금통 소유자에게 알림 생성 (본인 댓글이 아닌 경우만)
+  if (bucket.user_id !== userId) {
+    try {
+      await notifyComment(bucket.user_id, {
+        bucketId: bucket.id,
+        commentId: comment.id,
+        commenterId: userId,
+        commenterName: commentWithUserInfo.author.nickname,
+        bucketName: bucket.name,
+        commentContent: content
+      });
+    } catch (notifyError) {
+      console.error('댓글 알림 생성 실패:', notifyError);
+      // 알림 실패해도 댓글 생성은 성공으로 처리
+    }
+  }
+  
+  // 4. 일반 응답 데이터 준비
+  const responseData = {
+    success: true,
+    message: '댓글이 성공적으로 작성되었습니다.',
+    comment: commentWithUserInfo
+  };
+  
+  // 5. 댓글 작성 업적 처리 및 응답 가로채기 시도
+  const achievementHandled = await handleCommentAchievement(req, res, {
+    id: comment.id,
+    bucketId: bucket.id
+  });
+  
+  // 6. 업적이 달성되지 않았으면 일반 응답
+  if (!achievementHandled) {
+    res.status(201).json(responseData);
+  }
 });

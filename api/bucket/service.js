@@ -1418,3 +1418,120 @@ export const toggleBucketLike = async (bucketId, userId) => {
     is_liked: !isCurrentlyLiked // 새로운 상태
   };
 };
+
+// ============== 적금통 좋아요 토글 서비스 ==============
+export const createBucketComment = async (bucketId, userId, content) => {
+  const client = await pool.connect();
+
+  // 1. 적금통 존재 및 공개 여부 확인
+    const bucketResult = await client.query(`
+      SELECT 
+        id, 
+        user_id, 
+        name, 
+        is_public, 
+        status
+      FROM saving_bucket.list 
+      WHERE id = $1
+    `, [bucketId]);
+
+    if (bucketResult.rows.length === 0) {
+      throw customError(404, '존재하지 않는 적금통입니다.');
+    }
+    
+    const bucket = bucketResult.rows[0];
+    
+    // 2. 공개 적금통만 댓글 작성 가능
+    if (!bucket.is_public) {
+      throw customError(403, '비공개 적금통에는 댓글을 작성할 수 없습니다.');
+    }
+
+    // 3. 댓글 생성
+    const commentResult = await client.query(`
+      INSERT INTO saving_bucket.comment (bucket_id, user_id, content)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `, [bucketId, userId, content]);
+    
+    const newComment = commentResult.rows[0];
+
+  return {
+    bucket,
+    comment: newComment
+  };
+};
+
+
+// ============== 댓글 상세 정보 조회 서비스 ==============
+export const getCommentWithUserInfo = async (commentId) => {
+  const commentQuery = `
+    SELECT 
+      c.id,
+      c.content,
+      c.created_at,
+      c.bucket_id,
+      
+      -- 작성자 정보
+      u.id as author_id,
+      u.nickname as author_nickname,
+      uni.name as author_university,
+      
+      -- 작성자 캐릭터 정보
+      uc.character_item_id,
+      uc.outfit_item_id,
+      uc.hat_item_id,
+      char_item.name as character_name,
+      outfit_item.name as outfit_name,
+      hat_item.name as hat_name,
+      
+      -- 적금통 소유자 정보 (알림용)
+      sb.user_id as bucket_owner_id,
+      sb.name as bucket_name
+      
+    FROM saving_bucket.comment c
+    LEFT JOIN users.list u ON c.user_id = u.id
+    LEFT JOIN users.university uni ON u.university_id = uni.id
+    LEFT JOIN users.character uc ON u.id = uc.user_id
+    LEFT JOIN cosmetic_item.list char_item ON uc.character_item_id = char_item.id
+    LEFT JOIN cosmetic_item.list outfit_item ON uc.outfit_item_id = outfit_item.id
+    LEFT JOIN cosmetic_item.list hat_item ON uc.hat_item_id = hat_item.id
+    LEFT JOIN saving_bucket.list sb ON c.bucket_id = sb.id
+    WHERE c.id = $1
+  `;
+  
+  const result = await query(commentQuery, [commentId]);
+  
+  if (result.rows.length === 0) {
+    throw customError(404, '댓글을 찾을 수 없습니다.');
+  }
+  
+  const commentData = result.rows[0];
+  
+  return {
+    id: commentData.id,
+    content: commentData.content,
+    created_at: commentData.created_at,
+    bucket_id: commentData.bucket_id,
+    bucket_name: commentData.bucket_name,
+    bucket_owner_id: commentData.bucket_owner_id,
+    author: {
+      id: commentData.author_id,
+      nickname: commentData.author_nickname,
+      university: commentData.author_university,
+      character: {
+        character_item: {
+          id: commentData.character_item_id,
+          name: commentData.character_name
+        },
+        outfit_item: {
+          id: commentData.outfit_item_id,
+          name: commentData.outfit_name
+        },
+        hat_item: {
+          id: commentData.hat_item_id,
+          name: commentData.hat_name
+        }
+      }
+    }
+  };
+};

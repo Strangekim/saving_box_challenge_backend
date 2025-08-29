@@ -6,7 +6,8 @@ import {
   getBucketListController,
   getBucketDetailController,
   terminateBucket,
-  toggleBucketLikeController
+  toggleBucketLikeController,
+  createBucketCommentController
  } from './controller.js';
 import { 
   validateSchema, 
@@ -68,5 +69,17 @@ router.post("/:id/like",
   validateParams(idParam()),
   toggleBucketLikeController
 );
+
+// 적금통 댓글 작성
+router.post("/:id/comments", 
+  requireAuth,
+  validate({
+    params: idParam(),
+    body: savingsSchemas.bucketComment
+  }),
+  createBucketCommentController
+);
+
+
 
 export default router;
