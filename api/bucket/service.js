@@ -1331,3 +1331,90 @@ export const validateChallengeParticipationOnCreate = async (userId, accountType
   
   return true;
 };
+
+// ============== 적금통 좋아요 토글 서비스 ==============
+export const toggleBucketLike = async (bucketId, userId) => {
+  // 1. 적금통 정보 + 좋아요 상태를 한 번에 조회
+  const combinedResult = await query(`
+    SELECT 
+      sb.id,
+      sb.user_id,
+      sb.name,
+      sb.is_public,
+      sb.status,
+      sb.like_count,
+      CASE WHEN sbl.id IS NOT NULL THEN true ELSE false END as is_currently_liked,
+      sbl.id as like_record_id,
+      sbl.created_at as liked_at
+    FROM saving_bucket.list sb
+    LEFT JOIN saving_bucket.like sbl ON sb.id = sbl.bucket_id AND sbl.user_id = $2
+    WHERE sb.id = $1
+  `, [bucketId, userId]);
+  
+  if (combinedResult.rows.length === 0) {
+    throw customError(404, '존재하지 않는 적금통입니다.');
+  }
+  
+  const bucketInfo = combinedResult.rows[0];
+  
+  // 2. 검증 로직
+  if (!bucketInfo.is_public) {
+    throw customError(403, '비공개 적금통에는 좋아요를 누를 수 없습니다.');
+  }
+
+  const isCurrentlyLiked = bucketInfo.is_currently_liked;
+  let action;
+  let newLikeCount;
+  
+  if (isCurrentlyLiked) {
+    // 3-A. 좋아요 취소 (단일 쿼리)
+    const removeResult = await query(`
+      WITH deleted_like AS (
+        DELETE FROM saving_bucket.like 
+        WHERE bucket_id = $1 AND user_id = $2
+        RETURNING bucket_id
+      ),
+      updated_bucket AS (
+        UPDATE saving_bucket.list 
+        SET like_count = like_count - 1 
+        WHERE id = $1 AND EXISTS(SELECT 1 FROM deleted_like)
+        RETURNING like_count
+      )
+      SELECT like_count FROM updated_bucket
+    `, [bucketId, userId]);
+    
+    action = 'removed';
+    newLikeCount = removeResult.rows[0]?.like_count ?? bucketInfo.like_count - 1;
+    
+  } else {
+    // 3-B. 좋아요 추가 (단일 쿼리)
+    const addResult = await query(`
+      WITH inserted_like AS (
+        INSERT INTO saving_bucket.like (bucket_id, user_id) 
+        VALUES ($1, $2)
+        RETURNING bucket_id
+      ),
+      updated_bucket AS (
+        UPDATE saving_bucket.list 
+        SET like_count = like_count + 1 
+        WHERE id = $1 AND EXISTS(SELECT 1 FROM inserted_like)
+        RETURNING like_count
+      )
+      SELECT like_count FROM updated_bucket
+    `, [bucketId, userId]);
+    
+    action = 'added';
+    newLikeCount = addResult.rows[0]?.like_count ?? bucketInfo.like_count + 1;
+  }
+  
+  return {
+    success: true,
+    action,
+    bucket: {
+      id: bucketId,
+      name: bucketInfo.name,
+      like_count: newLikeCount
+    },
+    is_liked: !isCurrentlyLiked // 새로운 상태
+  };
+};
