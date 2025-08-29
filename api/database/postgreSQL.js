@@ -4,21 +4,27 @@ const {
   POSTGRES_USER,
   POSTGRES_PASSWORD,
   POSTGRES_DB,
-  POSTGRES_HOST = "db",  
-  POSTGRES_PORT = "5432"
+  // Docker Compose의 새로운 환경변수들 사용
+  PGHOST = "db",  
+  PGPORT = "5432",
+  PGUSER,
+  PGPASSWORD,
+  PGDATABASE
 } = process.env;
 
-export const pool = new Pool({
-  user: POSTGRES_USER,
-  password: POSTGRES_PASSWORD,
-  host: POSTGRES_HOST,
-  database: POSTGRES_DB,
-  port: Number(POSTGRES_PORT),
-  max: 5,  
+const dbConfig = {
+  user: PGUSER || POSTGRES_USER,
+  password: PGPASSWORD || POSTGRES_PASSWORD,
+  host: PGHOST,
+  database: PGDATABASE || POSTGRES_DB,
+  port: Number(PGPORT),
+  max: 5,
   min: 1,
-  idleTimeoutMillis: 10000,  
+  idleTimeoutMillis: 10000,
   acquireTimeoutMillis: 5000
-});
+};
+
+export const pool = new Pool(dbConfig);
 
 // client.connect();
 
