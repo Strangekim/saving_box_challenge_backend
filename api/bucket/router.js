@@ -5,7 +5,8 @@ import {
   updateBucket,
   getBucketListController,
   getBucketDetailController,
-  terminateBucket
+  terminateBucket,
+  toggleBucketLikeController
  } from './controller.js';
 import { 
   validateSchema, 
@@ -60,5 +61,12 @@ router.post("/:id/get_money",
   validateParams(idParam()),
   terminateBucket
 )
+
+// 적금통 좋아요 토글
+router.post("/:id/like", 
+  requireAuth,
+  validateParams(idParam()),
+  toggleBucketLikeController
+);
 
 export default router;

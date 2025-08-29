@@ -90,8 +90,9 @@ export const handleBucketCreationAchievement = async (req, res, bucketData, resp
 
 // 좋아요 업적 처리
 export const handleLikeAchievement = async (req, res, likeData) => {
+  const bucketId = likeData.bucketId || req.params.id;
   return handleAchievementResponse(req, res, 'give_like', {
-    bucketId: req.params.bucketId,
+    bucketId: bucketId,
     targetUserId: likeData.targetUserId
   });
 };

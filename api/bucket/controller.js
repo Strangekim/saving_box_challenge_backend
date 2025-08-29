@@ -1,6 +1,9 @@
 import { trycatchWrapper } from '../util/trycatchWrapper.js';
 import { customError } from '../util/customError.js';
-import { handleBucketCreationAchievement } from '../util/achievementMiddleware.js';
+import { 
+  handleBucketCreationAchievement,
+  handleLikeAchievement 
+} from '../util/achievementMiddleware.js';
 import { 
     getAllProducts, 
     validateBucketCreation,
@@ -23,7 +26,8 @@ import {
     deleteShinhanSavingsAccount,
     completeBucketTermination,
     enrichProductsWithParticipationStatus,
-    validateChallengeParticipationOnCreate
+    validateChallengeParticipationOnCreate,
+    toggleBucketLike
 } from './service.js';
 
 // ============== 제외할 상품 목록 전역 관리 ==============
@@ -368,3 +372,37 @@ export const terminateBucket = trycatchWrapper(async (req, res) => {
   });
 });
 
+// ============== 적금통 좋아요 토글 (최적화 버전) ==============
+export const toggleBucketLikeController = trycatchWrapper(async (req, res) => {
+  const bucketId = parseInt(req.params.id);
+  const userId = req.session.userId; 
+  
+  // 1. 좋아요 토글 처리
+  const result = await toggleBucketLike(bucketId, userId);
+  
+  // 2. 업적 처리 (좋아요를 준 경우만)
+  if (result.action === 'added') {
+    // 좋아요 업적 처리 시도
+    const achievementHandled = await handleLikeAchievement(req, res, {
+      bucketId: bucketId,
+      targetUserId: null // 필요시 적금통 소유자 ID 추가 가능
+    });
+    
+    if (achievementHandled) {
+      return; // 업적 응답이 전송됨
+    }
+  }
+  
+  // 3. 일반 응답
+  const statusCode = result.action === 'added' ? 201 : 200;
+  const message = result.action === 'added' ? 
+    '좋아요를 눌렀습니다.' : '좋아요를 취소했습니다.';
+  
+  res.status(statusCode).json({
+    success: true,
+    message,
+    action: result.action,
+    bucket: result.bucket,
+    is_liked: result.is_liked
+  });
+});

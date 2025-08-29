@@ -1,27 +1,22 @@
 import { query } from '../database/postgreSQL.js';
 
 const adjectives = [
-  '행복한', '화가난', '신나는', '졸린', '배고픈',
-  '똑똑한', '귀여운', '멋진', '용감한', '친절한',
-  '재미있는', '시원한', '따뜻한', '차가운', '빠른',
-  '느린', '작은', '큰', '높은', '낮은',
-  '밝은', '어두운', '조용한', '시끄러운', '부드러운',
-  '딱딱한', '달콤한', '쓴', '매운', '짠',
-  '예쁜', '못생긴', '젊은', '늙은', '새로운',
-  '오래된', '깨끗한', '더러운', '무거운', '가벼운',
-  '강한', '약한', '건강한', '아픈', '날씬한'
+  '푸른별', '붉은달', '작은별', '거친파', '하얀눈',
+  '깊은밤', '은빛별', '검은불', '찬바람', '따순불',
+  '푸른빛', '노을빛', '새하얀', '은하수', '별빛길',
+  '흔들별', '울보귀', '꿀잠별', '반짝별', '번개불',
+  '돌멩이', '나무속', '하늘빛', '초록불', '검은돌',
+  '유리별', '달콤빛', '미소꽃', '빛나는', '어두밤'
 ];
 
 const animals = [
-  '북극곰', '사막여우', '앵무새', '고양이', '강아지',
-  '토끼', '다람쥐', '펭귄', '코알라', '판다',
-  '호랑이', '사자', '기린', '코끼리', '원숭이',
-  '늑대', '여우', '곰', '사슴', '말',
-  '양', '염소', '돼지', '소', '닭',
-  '오리', '거북이', '개구리', '물고기', '상어',
-  '고래', '돌고래', '문어', '게', '새우',
-  '나비', '벌', '개미', '거미', '잠자리',
-  '독수리', '매', '올빼미', '까치', '참새'
+  '강아지', '고양이', '호랑이', '사슴별', '여우별',
+  '펭귄이', '코끼리', '다람쥐', '돌고래', '상어별',
+  '문어별', '거북이', '까치별', '참새별', '올빼미',
+  '독수리', '잠자리', '꿀벌이', '개구리', '원숭이',
+  '용사님', '도깨비', '마법사', '전사님', '장군님',
+  '천사님', '악마별', '로봇이', '기사님', '모험가',
+  '괴물별', '영웅님', '요정님', '드래곤', '정령별'
 ];
 
 const generateBasicNickname = () => {
@@ -33,13 +28,19 @@ const generateBasicNickname = () => {
 export const generateUniqueNickname = async () => {
   let nickname = generateBasicNickname();
   
-  // DB에서 중복 확인
-  const existing = await query('SELECT id FROM users.list WHERE nickname = $1', [nickname]);
+  // DB 통신 1번으로 중복 확인 + MAX ID 동시 조회
+  const result = await query(`
+    SELECT 
+      EXISTS(SELECT 1 FROM users.list WHERE nickname = $1) as is_duplicate,
+      COALESCE(MAX(id), 0) + 1 as next_id
+    FROM users.list
+  `, [nickname]);
   
-  // 중복이면 뒤에 랜덤 숫자 추가 (100~999)
-  if (existing.rows.length > 0) {
-    const randomNum = Math.floor(Math.random() * 900) + 100; // 100~999
-    nickname += randomNum;
+  const { is_duplicate, next_id } = result.rows[0];
+  
+  // 중복이면 고유 식별자 추가
+  if (is_duplicate) {
+    nickname += next_id;
   }
   
   return nickname;
