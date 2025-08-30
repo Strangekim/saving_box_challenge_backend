@@ -724,31 +724,29 @@ const bucketQuery = `
   
   // ✅ 댓글 목록 조회 (댓글 작성자는 프로필 캐릭터 사용, 고유한 alias)
   const commentsQuery = `
-    SELECT 
-      c.id,
-      c.content,
-      c.created_at,
-      u.id as author_id,
-      u.nickname as author_nickname,
-      uni.name as author_university,
-      -- 작성자 프로필 캐릭터 정보 (고유한 alias 사용)
-      uc.character_item_id as author_character_item_id,
-      uc.outfit_item_id as author_outfit_item_id,
-      uc.hat_item_id as author_hat_item_id,
-      author_char_item.name as author_character_name,
-      author_outfit_item.name as author_outfit_name,
-      author_hat_item.name as author_hat_name
-    FROM saving_bucket.comment c
-    LEFT JOIN users.list u ON c.user_id = u.id
-    LEFT JOIN users.university uni ON u.university_id = uni.id
-    -- 작성자 프로필 캐릭터 정보 조인 (고유한 alias)
-    LEFT JOIN users.character uc ON u.id = uc.user_id
-    LEFT JOIN cosmetic_item.list author_char_item ON uc.character_item_id = author_char_item.id
-    LEFT JOIN cosmetic_item.list author_outfit_item ON uc.outfit_item_id = author_outfit_item.id
-    LEFT JOIN cosmetic_item.list author_hat_item ON uc.hat_item_id = author_hat_item.id
-    WHERE c.bucket_id = $1
-    ORDER BY c.created_at DESC
-  `;
+  SELECT
+    c.id,
+    c.content,
+    c.created_at,
+    u.id    AS author_id,
+    u.nickname AS author_nickname,
+    uni.name  AS author_university,
+    uc.character_item_id AS author_character_item_id,
+    uc.outfit_item_id    AS author_outfit_item_id,
+    uc.hat_item_id       AS author_hat_item_id,
+    ci_char.name   AS author_character_name,
+    ci_outfit.name AS author_outfit_name,
+    ci_hat.name    AS author_hat_name
+  FROM saving_bucket.comment c
+  LEFT JOIN users.list u            ON u.id = c.user_id
+  LEFT JOIN users.university uni    ON uni.id = u.university_id
+  LEFT JOIN users.character uc      ON uc.user_id = u.id
+  LEFT JOIN cosmetic_item.list ci_char   ON ci_char.id   = uc.character_item_id
+  LEFT JOIN cosmetic_item.list ci_outfit ON ci_outfit.id = uc.outfit_item_id
+  LEFT JOIN cosmetic_item.list ci_hat    ON ci_hat.id    = uc.hat_item_id
+  WHERE c.bucket_id = $1
+  ORDER BY c.created_at DESC
+`;
   
   const commentsResult = await query(commentsQuery, [bucketId]);
   
