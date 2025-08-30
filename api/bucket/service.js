@@ -684,13 +684,13 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
       u.nickname as owner_nickname,
       uni.name as owner_university,
       
-      -- 적금통 캐릭터 정보 (변경된 부분!)
-      sb.character_item_id,
-      sb.outfit_item_id,
-      sb.hat_item_id,
-      char_item.name as character_name,
-      outfit_item.name as outfit_name,
-      hat_item.name as hat_name,
+      -- ✅ 적금통 캐릭터 정보 (고유한 alias 사용)
+      sb.character_item_id as bucket_character_item_id,
+      sb.outfit_item_id as bucket_outfit_item_id,
+      sb.hat_item_id as bucket_hat_item_id,
+      bucket_char_item.name as bucket_character_name,
+      bucket_outfit_item.name as bucket_outfit_name,
+      bucket_hat_item.name as bucket_hat_name,
       
       -- 댓글 수
       COALESCE(comments.comment_count, 0) as comment_count
@@ -703,10 +703,10 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
     LEFT JOIN users.list AS u ON sb.user_id = u.id
     LEFT JOIN users.university AS uni ON u.university_id = uni.id
     
-    -- 적금통 캐릭터 정보 조인 (변경된 부분!)
-    LEFT JOIN cosmetic_item.list AS char_item ON sb.character_item_id = char_item.id
-    LEFT JOIN cosmetic_item.list AS outfit_item ON sb.outfit_item_id = outfit_item.id
-    LEFT JOIN cosmetic_item.list AS hat_item ON sb.hat_item_id = hat_item.id
+    -- ✅ 적금통 캐릭터 정보 조인 (고유한 alias 사용)
+    LEFT JOIN cosmetic_item.list AS bucket_char_item ON sb.character_item_id = bucket_char_item.id
+    LEFT JOIN cosmetic_item.list AS bucket_outfit_item ON sb.outfit_item_id = bucket_outfit_item.id
+    LEFT JOIN cosmetic_item.list AS bucket_hat_item ON sb.hat_item_id = bucket_hat_item.id
     
     -- 댓글 수 조인
     ${commentCountSubquery}
@@ -728,7 +728,7 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
   
   const bucket = bucketResult.rows[0];
   
-  // 댓글 목록 조회 (최신순) - 댓글 작성자 캐릭터는 프로필 캐릭터 사용
+  // ✅ 댓글 목록 조회 (댓글 작성자는 프로필 캐릭터 사용, 고유한 alias)
   const commentsQuery = `
     SELECT 
       c.id,
@@ -737,21 +737,21 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
       u.id as author_id,
       u.nickname as author_nickname,
       uni.name as author_university,
-      -- 작성자 프로필 캐릭터 정보 (댓글에서는 프로필 캐릭터 사용)
-      uc.character_item_id,
-      uc.outfit_item_id,
-      uc.hat_item_id,
-      char_item.name as character_name,
-      outfit_item.name as outfit_name,
-      hat_item.name as hat_name
+      -- 작성자 프로필 캐릭터 정보 (고유한 alias 사용)
+      uc.character_item_id as author_character_item_id,
+      uc.outfit_item_id as author_outfit_item_id,
+      uc.hat_item_id as author_hat_item_id,
+      author_char_item.name as author_character_name,
+      author_outfit_item.name as author_outfit_name,
+      author_hat_item.name as author_hat_name
     FROM saving_bucket.comment c
     LEFT JOIN users.list u ON c.user_id = u.id
     LEFT JOIN users.university uni ON u.university_id = uni.id
-    -- 작성자 프로필 캐릭터 정보 조인
+    -- 작성자 프로필 캐릭터 정보 조인 (고유한 alias)
     LEFT JOIN users.character uc ON u.id = uc.user_id
-    LEFT JOIN cosmetic_item.list char_item ON uc.character_item_id = char_item.id
-    LEFT JOIN cosmetic_item.list outfit_item ON uc.outfit_item_id = outfit_item.id
-    LEFT JOIN cosmetic_item.list hat_item ON uc.hat_item_id = hat_item.id
+    LEFT JOIN cosmetic_item.list author_char_item ON uc.character_item_id = author_char_item.id
+    LEFT JOIN cosmetic_item.list author_outfit_item ON uc.outfit_item_id = author_outfit_item.id
+    LEFT JOIN cosmetic_item.list author_hat_item ON uc.hat_item_id = author_hat_item.id
     WHERE c.bucket_id = $1
     ORDER BY c.created_at DESC
   `;
@@ -763,7 +763,7 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
     ? ((bucket.success_payment / bucket.total_payment) * 100).toFixed(1)
     : 0;
   
-  // 댓글 데이터 포맷팅
+  // 댓글 데이터 포맷팅 (작성자는 프로필 캐릭터)
   const formattedComments = commentsResult.rows.map(comment => ({
     id: comment.id,
     content: comment.content,
@@ -773,23 +773,23 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
       nickname: comment.author_nickname,
       university: comment.author_university,
       character: {
-        character_item: comment.character_item_id ? {
-          id: comment.character_item_id,
-          name: comment.character_name
+        character_item: comment.author_character_item_id ? {
+          id: comment.author_character_item_id,
+          name: comment.author_character_name
         } : null,
-        outfit_item: comment.outfit_item_id ? {
-          id: comment.outfit_item_id,
-          name: comment.outfit_name
+        outfit_item: comment.author_outfit_item_id ? {
+          id: comment.author_outfit_item_id,
+          name: comment.author_outfit_name
         } : null,
-        hat_item: comment.hat_item_id ? {
-          id: comment.hat_item_id,
-          name: comment.hat_name
+        hat_item: comment.author_hat_item_id ? {
+          id: comment.author_hat_item_id,
+          name: comment.author_hat_name
         } : null
       }
     }
   }));
   
-  // 적금통 데이터 포맷팅
+  // ✅ 적금통 데이터 포맷팅 (적금통 전용 캐릭터 사용)
   const formattedBucket = {
     id: bucket.id,
     name: bucket.name,
@@ -814,23 +814,23 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
     fail_payment: bucket.fail_payment,
     last_progress_date: bucket.last_progress_date,
     
-    // 소유자 정보 (캐릭터는 적금통 캐릭터로 변경!)
+    // 소유자 정보 (적금통 전용 캐릭터로 수정!)
     owner: {
       id: bucket.owner_id,
       nickname: bucket.owner_nickname,
       university: bucket.owner_university,
       character: {
-        character_item: bucket.character_item_id ? {
-          id: bucket.character_item_id,
-          name: bucket.character_name
+        character_item: bucket.bucket_character_item_id ? {
+          id: bucket.bucket_character_item_id,
+          name: bucket.bucket_character_name
         } : null,
-        outfit_item: bucket.outfit_item_id ? {
-          id: bucket.outfit_item_id,
-          name: bucket.outfit_name
+        outfit_item: bucket.bucket_outfit_item_id ? {
+          id: bucket.bucket_outfit_item_id,
+          name: bucket.bucket_outfit_name
         } : null,
-        hat_item: bucket.hat_item_id ? {
-          id: bucket.hat_item_id,
-          name: bucket.hat_name
+        hat_item: bucket.bucket_hat_item_id ? {
+          id: bucket.bucket_hat_item_id,
+          name: bucket.bucket_hat_name
         } : null
       }
     }
