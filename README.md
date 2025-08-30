@@ -2,6 +2,10 @@
 
 ![projectImg](./readmeFile/rn_image_picker_lib_temp_f04876cb-92ae-4526-bfe1-5a35a875a661.png)
 
+
+## Frontend URL : [https://github.com/yjsong2154/ShinhanBank](https://github.com/yjsong2154/ShinhanBank)
+## 배포 주소 : [shinhan-bank-drab.vercel.app](https://shinhan-bank-drab.vercel.app/login)
+
 **캐릭터 키우며 저축 습관 만들기**
 
 신한은행 해커톤 "저쪽 신싸분께서 보내셨습니다" 팀의 게임화된 적금 서비스
