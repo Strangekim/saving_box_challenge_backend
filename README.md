@@ -22,23 +22,7 @@
 
 ## 🏗️ 시스템 아키텍처
 
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend       │    │   Database      │
-│                 │    │                 │    │                 │
-│  React Native   │◄──►│  Node.js        │◄──►│  PostgreSQL     │
-│  (모바일 앱)     │    │  Express.js     │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                              │
-                              ▼
-                     ┌─────────────────┐
-                     │  신한은행 API    │
-                     │                │
-                     │  • 계좌 생성     │
-                     │  • 납입 조회     │
-                     │  • 계좌 해지     │
-                     └─────────────────┘
-```
+![projectImg](./readmeFile/Web%20App%20Reference%20Architecture%20(1).png)
 
 ## 🚀 주요 기능
 
@@ -66,13 +50,22 @@
 ## 🛠️ 기술 스택
 
 ### Backend
-- **Runtime**: Node.js 22
-- **Framework**: Express.js
-- **Database**: PostgreSQL 17
-- **Container**: Docker & Docker Compose
+- **Backend**: Node.js 22 + Express.js
+- **Database**: PostgreSQL 17 (Alpine)
+- **Container**: Docker + Docker Compose
+- **API** Integration: 신한은행 API (SSAFY)
+- **Session**: express-session (메모리 스토어)
 - **Validation**: Joi
-- **Session**: express-session
-- **Cron**: node-cron
+- **Cron** Jobs: node-cron
+- **AI** Integration: OpenAI GPT-4o-mini
+- **Documentation**: Notion API
+
+### 시스템 요구사항
+
+- **Docker**: 20.10.0 이상
+- **Docker** Compose: 2.0.0 이상
+- **Git**: 최신 버전
+- **OS**: Linux, macOS, Windows (Docker Desktop 지원)
 
 ### Infrastructure
 - **Deployment**: AWS EC2
@@ -98,6 +91,93 @@ saving_box_challenge_backend/
 ├── .github/workflows/            # GitHub Actions
 ├── docker-compose.yml            # Docker 설정
 └── README.md                     # 프로젝트 문서
+```
+
+## 📋 사전 준비
+
+###  1. API 키 및 외부 서비스 설정
+프로젝트 실행을 위해 다음 API 키들이 필요합니다.
+
+- 신한은행 API 키 (SSAFY 제공)
+- OpenAI API 키 (선택적 - AI 리포트 생성용)
+- Notion API 키 (선택적 - 리포트 저장용)
+
+### 2. 환경변수 파일 준비
+`.env.example` 파일을 참고하여 `.env`파일을 생성하세요.
+```bash
+cp .env.example .env
+```
+필요한 환경변수들을 설정하세요.
+```bash
+# 데이터베이스 설정
+POSTGRES_USER=your_db_user
+POSTGRES_PASSWORD=your_strong_password
+POSTGRES_DB=appdb
+
+# 서버 설정
+API_PORT=3000
+PORT=3000
+TZ=Asia/Seoul
+
+# 신한은행 API 설정 (필수)
+API_KEY=your_shinhan_api_key
+institutionCode=00100
+fintechAppNo=001
+SHINHAN_URL=https://finopenapi.ssafy.io/ssafy/api/v1
+
+# 세션 보안 (필수)
+SESSION_SECRET=your_random_secret_key_at_least_32_chars
+ENCRYPTION_KEY=your_32_byte_encryption_key_exactly!!
+
+# AI 리포트 (선택적)
+OPENAI_API_KEY=your_openai_api_key
+
+# Notion 통합 (선택적)
+NOTION_API_KEY=your_notion_api_key
+NOTION_DATABASE_ID=your_notion_page_id
+```
+
+### 3. 빌드 및 실행 방법
+
+**Docker Compose 사용 (권장)**
+
+1. 저장소 클론
+
+```bash
+git clone <repository-url>
+cd saving_box_challenge_backend
+```
+
+2. 환경변수 설정
+```bash
+# 환경변수 파일 생성
+cp .env.example .env
+
+# 환경변수 수정 (위의 사전 준비 참고)
+nano .env  # 또는 선호하는 에디터 사용
+```
+
+3. 서비스 빌드 및 실행
+```bash
+# 환경변수 파일 생성
+# 백그라운드에서 모든 서비스 시작
+docker compose up -d
+
+# 로그 확인
+docker compose logs -f
+
+# 특정 서비스 로그만 확인
+docker compose logs -f api
+docker compose logs -f db
+```
+
+4. 서비스 상태 확인
+```bash
+# 실행 중인 컨테이너 확인
+docker compose ps
+
+# API 서버 동작 확인
+curl http://localhost:8080/health
 ```
 
 ## 📊 데이터베이스 스키마
@@ -151,9 +231,24 @@ saving_box_challenge_backend/
 ✅ **보안**: userKey 암호화, 세션 관리, 권한 검증 시스템  
 ✅ **데이터베이스**: PostgreSQL 기반 정규화된 스키마 설계, 인덱스 최적화  
 
+## ⚡ 자동화 시스템
+### ✅ 크론 기반 배치 작업
+
+- 매일 08:00 KST 전체 적금통 동기화
+- 배치 처리 (3개씩 병렬, 500ms 간격) 로 부하 분산
+- 상세 로그 및 진행 상황 모니터링
+- 동기화 → AI 리포트 생성 → Notion 저장 파이프라인
+
+### ✅ AI 기반 운영 분석
+
+- OpenAI GPT-4o-mini로 일일 데이터 분석
+- 8개 DB 쿼리로 종합 현황 수집
+- 마크다운 → Notion 블록 자동 변환
+- 성장 지표, 인기 상품, 대학 현황 등 인사이트 제공
+
 
 ## 🤝 팀 정보
 
 **팀명**: 저쪽 신싸분께서 보내셨습니다  
-**해커톤**: 신한은행 해커톤 20245 
+**해커톤**: 신한은행 해커톤 2025 
 **프로젝트 기간**: 2025년 8월  
