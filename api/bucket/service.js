@@ -146,10 +146,14 @@ export const createDepositAccount = async (userId, accountTypeUniqueNo, depositB
 
 // ============== 사용자 아이템 보유 검증 서비스 ==============
 export const validateUserItems = async (userId, characterItemId, outfitItemId, hatItemId) => {
-  // 1. 입력받은 모든 아이템 ID들
-  const itemIds = [characterItemId, outfitItemId, hatItemId];
+  // NULL인 아이템들은 검증에서 제외
+  const itemIds = [characterItemId, outfitItemId, hatItemId].filter(id => id !== null);
   
-  // 2. 사용자 가방에서 해당 아이템들 보유 여부 확인
+  if (itemIds.length === 0) {
+    throw customError(400, '최소한 캐릭터 아이템은 선택해야 합니다.');
+  }
+  
+  // 사용자 가방에서 해당 아이템들 보유 여부 확인
   const result = await query(
     `SELECT item_id, item_type_id 
      FROM users.inventory 
@@ -160,30 +164,30 @@ export const validateUserItems = async (userId, characterItemId, outfitItemId, h
   const ownedItems = result.rows;
   const ownedItemIds = ownedItems.map(item => item.item_id);
   
-  // 3. 보유하지 않은 아이템이 있는지 확인
+  // 보유하지 않은 아이템이 있는지 확인
   const missingItems = itemIds.filter(id => !ownedItemIds.includes(id));
   if (missingItems.length > 0) {
     throw customError(400, '보유하지 않은 아이템이 포함되어 있습니다.');
   }
   
-  // 4. 아이템 타입별 검증 (캐릭터=1, 한벌옷=2, 모자=3)
+  // 아이템 타입별 검증 (NULL이 아닌 경우만)
   const itemTypeMap = {};
   ownedItems.forEach(item => {
     itemTypeMap[item.item_id] = item.item_type_id;
   });
   
-  // 캐릭터 아이템 검증
-  if (itemTypeMap[characterItemId] !== 1) {
+  // 캐릭터 아이템 검증 (필수)
+  if (!characterItemId || itemTypeMap[characterItemId] !== 1) {
     throw customError(400, '캐릭터 아이템이 올바르지 않습니다.');
   }
   
-  // 한벌옷 아이템 검증
-  if (itemTypeMap[outfitItemId] !== 2) {
+  // 한벌옷 아이템 검증 (선택적)
+  if (outfitItemId && itemTypeMap[outfitItemId] !== 2) {
     throw customError(400, '한벌옷 아이템이 올바르지 않습니다.');
   }
   
-  // 모자 아이템 검증
-  if (itemTypeMap[hatItemId] !== 3) {
+  // 모자 아이템 검증 (선택적)
+  if (hatItemId && itemTypeMap[hatItemId] !== 3) {
     throw customError(400, '모자 아이템이 올바르지 않습니다.');
   }
   

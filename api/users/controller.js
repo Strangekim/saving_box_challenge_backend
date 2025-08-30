@@ -170,22 +170,29 @@ export const getUserInventoryController = trycatchWrapper(async (req, res) => {
 // ============== 사용자 캐릭터 프로필 수정 ==============
 export const updateUserCharacterController = trycatchWrapper(async (req, res) => {
   const userId = req.session.userId;
-  const { character_item_id, outfit_item_id, hat_item_id } = req.body;
+  let { character_item_id, outfit_item_id, hat_item_id } = req.body;
   
-  // 1. 사용자 캐릭터 프로필 업데이트
+  // 캐릭터는 필수, 나머지는 선택적
+  if (!character_item_id) {
+    throw customError(400, '캐릭터 아이템은 필수로 선택해야 합니다.');
+  }
+  
+  // 빈 값들을 null로 변환
+  outfit_item_id = outfit_item_id || null;
+  hat_item_id = hat_item_id || null;
+  
+  // 사용자 캐릭터 프로필 업데이트
   const updatedCharacter = await updateUserCharacter(userId, {
     character_item_id,
     outfit_item_id,
     hat_item_id
   });
   
-  // 2. 성공 응답
   res.status(200).json({
     message: '캐릭터 프로필이 성공적으로 수정되었습니다.',
     character: updatedCharacter
   });
 });
-
 // ============== 내 정보 조회 ==============
 export const getUserProfileController = trycatchWrapper(async (req, res) => {
   const userId = req.session.userId;

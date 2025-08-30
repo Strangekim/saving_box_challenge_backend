@@ -210,9 +210,9 @@ export const createBucket = trycatchWrapper(async (req, res) => {
   const achievementHandled = await handleBucketCreationAchievement(req, res, savedBucket, responseData);
   
   if (!achievementHandled) {
-    console.log('📤 일반 응답 전송 시도 (201)');
+    console.log('일반 응답 전송 시도 (201)');
     if (res.headersSent) {
-      console.log('⚠️ 응답이 이미 전송됨! 201 응답 불가');
+      console.log('응답이 이미 전송됨! 201 응답 불가');
     } else {
       res.status(201).json(responseData);
       console.log('✅ 201 응답 전송 완료');
@@ -226,23 +226,31 @@ export const createBucket = trycatchWrapper(async (req, res) => {
 export const updateBucket = trycatchWrapper(async (req, res) => {
   const bucketId = parseInt(req.params.id);
   const userId = req.session.userId;
-  const updateData = req.body;
+  const updateData = { ...req.body };
   
   // 1. 적금통 존재 및 소유권 확인
   await validateBucketOwnership(bucketId, userId);
   
   // 2. 아이템 관련 업데이트가 있는 경우에만 검증
-  const hasItemUpdates = updateData.character_item_id || 
-                        updateData.outfit_item_id || 
-                        updateData.hat_item_id;
+  const hasItemUpdates = updateData.character_item_id !== undefined || 
+                        updateData.outfit_item_id !== undefined || 
+                        updateData.hat_item_id !== undefined;
   
   if (hasItemUpdates) {
-    // 모든 아이템 ID가 제공되었는지 확인
-    if (!updateData.character_item_id || !updateData.outfit_item_id || !updateData.hat_item_id) {
-      throw customError(400, '아이템을 변경할 때는 캐릭터, 한벌옷, 모자를 모두 선택해야 합니다.');
+    // 빈 값들을 null로 변환
+    if ('outfit_item_id' in updateData) {
+      updateData.outfit_item_id = updateData.outfit_item_id || null;
+    }
+    if ('hat_item_id' in updateData) {
+      updateData.hat_item_id = updateData.hat_item_id || null;
     }
     
-    // 3. 사용자 아이템 보유 검증 (기존 함수 재사용)
+    // 캐릭터 아이템이 제공되지 않았다면 에러
+    if ('character_item_id' in updateData && !updateData.character_item_id) {
+      throw customError(400, '캐릭터 아이템은 필수입니다.');
+    }
+    
+    // 사용자 아이템 보유 검증
     await validateUserItems(
       userId, 
       updateData.character_item_id, 
