@@ -657,8 +657,8 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
   `;
   
 const bucketQuery = `
-  SELECT 
-    -- 적금통 기본 정보
+  SELECT
+    -- 기본 정보
     sb.id,
     sb.name,
     sb.description,
@@ -668,59 +668,53 @@ const bucketQuery = `
     sb.like_count,
     sb.view_count,
     sb.created_at,
-    
+
     -- 금융 정보
-    sb.accountname as account_name,
-    sb.interestrate as interest_rate,
-    sb.subscriptionperiod as subscription_period,
+    sb.accountname          AS account_name,
+    sb.interestrate         AS interest_rate,
+    sb.subscriptionperiod   AS subscription_period,
     sb.deposit_cycle,
     sb.total_payment,
     sb.success_payment,
     sb.fail_payment,
     sb.last_progress_date,
-    
-    -- 소유자 정보 (캐릭터 제외)
-    u.id as owner_id,
-    u.nickname as owner_nickname,
-    uni.name as owner_university,
-    
-    -- ✅ 적금통 캐릭터 정보 (고유한 alias 사용)
-    sb.character_item_id as bucket_character_item_id,
-    sb.outfit_item_id as bucket_outfit_item_id,
-    sb.hat_item_id as bucket_hat_item_id,
-    bucket_char_item.name as bucket_character_name,
-    bucket_outfit_item.name as bucket_outfit_name,
-    bucket_hat_item.name as bucket_hat_name,
-    
-    -- 댓글 수
-    COALESCE(comments.comment_count, 0) as comment_count
-    
+
+    -- 소유자
+    u.id    AS owner_id,
+    u.nickname AS owner_nickname,
+    uni.name  AS owner_university,
+
+    -- ✅ 버킷에 바인딩된 코스메틱(프로필 아님)
+    sb.character_item_id AS bucket_character_item_id,
+    sb.outfit_item_id    AS bucket_outfit_item_id,
+    sb.hat_item_id       AS bucket_hat_item_id,
+    ci_char.name   AS bucket_character_name,
+    ci_outfit.name AS bucket_outfit_name,
+    ci_hat.name    AS bucket_hat_name,
+
+    -- 댓글 수(간단 상관 서브쿼리, 정수 캐스팅)
+    COALESCE( (SELECT COUNT(*)::int FROM saving_bucket.comment c WHERE c.bucket_id = sb.id), 0 ) AS comment_count
+
     ${userLikeSelect}
-    
-  FROM saving_bucket.list AS sb
-  
-  -- 소유자 정보 조인 (캐릭터 제외)
-  LEFT JOIN users.list AS u ON sb.user_id = u.id
-  LEFT JOIN users.university AS uni ON u.university_id = uni.id
-  
-  -- ✅ 적금통 캐릭터 정보 조인을 댓글 수 조인보다 먼저!
-  LEFT JOIN cosmetic_item.list AS bucket_char_item ON sb.character_item_id = bucket_char_item.id
-  LEFT JOIN cosmetic_item.list AS bucket_outfit_item ON sb.outfit_item_id = bucket_outfit_item.id
-  LEFT JOIN cosmetic_item.list AS bucket_hat_item ON sb.hat_item_id = bucket_hat_item.id
-  
-  -- 댓글 수 조인
-  ${commentCountSubquery}
-  
-  -- 사용자 좋아요 정보 조인 (로그인한 경우만)
+  FROM saving_bucket.list sb
+  LEFT JOIN users.list u           ON u.id = sb.user_id
+  LEFT JOIN users.university uni   ON uni.id = u.university_id
+  LEFT JOIN cosmetic_item.list ci_char   ON ci_char.id   = sb.character_item_id
+  LEFT JOIN cosmetic_item.list ci_outfit ON ci_outfit.id = sb.outfit_item_id
+  LEFT JOIN cosmetic_item.list ci_hat    ON ci_hat.id    = sb.hat_item_id
   ${userLikeJoin}
-  
   WHERE sb.id = $1
 `;
   
   // 파라미터 설정
   const bucketParams = userId ? [bucketId, userId] : [bucketId];
+
+  console.log('[DETAIL_SQL]', bucketQuery);
+  console.log('[DETAIL_PARAMS]', bucketParams);
+
   
   const bucketResult = await query(bucketQuery, bucketParams);
+  console.log('[DETAIL_ROW_0]', bucketResult.rows[0]);
   
   if (bucketResult.rows.length === 0) {
     throw customError(404, '존재하지 않는 적금통입니다.');
