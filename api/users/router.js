@@ -1,6 +1,10 @@
 import { Router } from 'express';
-import { validateSchema } from '../util/validateSchema.js';
-import { loginSchema,updateCharacterSchema,myBucketsQuerySchema,nicknameSchema  } from './schema.js';
+import { 
+    validateSchema,
+    validateParams,
+    validateQuery 
+ } from '../util/validateSchema.js';
+import { loginSchema,updateCharacterSchema,myBucketsQuerySchema,nicknameSchema,userIdParam,otherUserBucketsQuerySchema  } from './schema.js';
 import { requireAuth } from '../util/auth.js';
 import { 
     logIn,
@@ -10,7 +14,9 @@ import {
     updateUserCharacterController,
     getUserProfileController,
     getMyBucketListController,
-    updateUserNicknameController
+    updateUserNicknameController,
+    getOtherUserProfileController,
+    getOtherUserBucketListController     
 } from './controller.js';
 
 const router = Router();
@@ -63,6 +69,19 @@ router.patch("/nickname",
     requireAuth,
     validateSchema(nicknameSchema),
     updateUserNicknameController
+);
+
+// 다른 사용자 정보 조회 (로그인 불필요, 본인이면 이메일 포함)
+router.get("/:id",
+    validateParams(userIdParam),
+    getOtherUserProfileController
+);
+
+// 다른 사용자 적금통 목록 조회 (공개 적금통만, 로그인 불필요)
+router.get("/:id/buckets",
+    validateParams(userIdParam),
+    validateQuery(otherUserBucketsQuerySchema),
+    getOtherUserBucketListController
 );
 
 export default router;
