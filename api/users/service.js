@@ -101,10 +101,8 @@ export const setupDefaultItems = async (client, userId) => {
      WHERE is_default = true`
   );
   
-  // 타입별로 분류
   const characterId = defaultItems.rows.find(item => item.cosmetic_item_type === 1)?.id;
-  const outfitId = defaultItems.rows.find(item => item.cosmetic_item_type === 2)?.id;
-  const hatId = defaultItems.rows.find(item => item.cosmetic_item_type === 3)?.id;
+  // outfit과 hat은 NULL로 시작 (착용하지 않은 상태)
   
   // 가방에 기본 아이템들 추가
   await client.query(
@@ -115,14 +113,13 @@ export const setupDefaultItems = async (client, userId) => {
     [userId]
   );
   
-  // 캐릭터에 기본 아이템들 장착
+  // 캐릭터에 기본 캐릭터만 장착, 옷과 모자는 NULL
   await client.query(
     `INSERT INTO users.character (user_id, character_item_id, outfit_item_id, hat_item_id) 
-     VALUES ($1, $2, $3, $4)`,
-    [userId, characterId, outfitId, hatId]
+     VALUES ($1, $2, NULL, NULL)`,
+    [userId, characterId]
   );
 };
-
 // ============== 로그인 관련 서비스 ==============
 
 // DB: 사용자 조회
@@ -433,16 +430,16 @@ export const updateUserCharacter = async (userId, characterData) => {
       name: characterInfo.character_name,
       description: characterInfo.character_description
     },
-    outfit_item: {
+    outfit_item: characterInfo.outfit_item_id ? {
       id: characterInfo.outfit_item_id,
       name: characterInfo.outfit_name,
       description: characterInfo.outfit_description
-    },
-    hat_item: {
+    } : null,
+    hat_item: characterInfo.hat_item_id ? {
       id: characterInfo.hat_item_id,
       name: characterInfo.hat_name,
       description: characterInfo.hat_description
-    }
+    } : null
   };
 };
 

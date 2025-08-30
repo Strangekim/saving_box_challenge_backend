@@ -35,18 +35,18 @@ export const savingsSchemas = {
     }),
 
     // 아바타/코스메틱 아이템 (선택)
-    character_item_id: Joi.number().integer().positive().required(),
-    outfit_item_id:   Joi.number().integer().positive().required(),
-    hat_item_id:      Joi.number().integer().positive().required()
+    character_item_id: Joi.number().integer().positive().required(), // 캐릭터는 필수
+    outfit_item_id: Joi.number().integer().positive().allow(null),   // NULL 허용
+    hat_item_id: Joi.number().integer().positive().allow(null)
   }),
 
   // 적금통 수정하기 검증
   updateBucket : Joi.object({
     name: Joi.string().trim().min(2).max(30),
     description: Joi.string().trim().max(500).allow(''), // 빈 문자열은 허용, null은 불가
-    character_item_id: Joi.number().integer().positive(), // null 불가
-    outfit_item_id: Joi.number().integer().positive(),
-    hat_item_id: Joi.number().integer().positive(),
+    character_item_id: Joi.number().integer().positive().required(), // 캐릭터는 필수
+    outfit_item_id: Joi.number().integer().positive().allow(null),   // NULL 허용
+    hat_item_id: Joi.number().integer().positive().allow(null)
   }).min(1),
 
   bucketComment : Joi.object({
