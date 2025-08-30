@@ -19,10 +19,11 @@ const dbConfig = {
   database: PGDATABASE || POSTGRES_DB,
   port: Number(PGPORT),
   max: 5,
-  min: 1,
-  idleTimeoutMillis: 10000,
-  acquireTimeoutMillis: 5000
+  idleTimeoutMillis: 10_000,
+  connectionTimeoutMillis: 5_000,
 };
+
+// db 수정
 
 export const pool = new Pool(dbConfig);
 

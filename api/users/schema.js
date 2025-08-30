@@ -45,3 +45,22 @@ export const myBucketsQuerySchema = Joi.object({
     'any.only': 'status는 all, in_progress, success, failed 중 하나여야 합니다.'
   })
 });
+
+// 사용자 ID 파라미터 검증
+export const userIdParam = Joi.object({
+  id: Joi.number().integer().positive().required().messages({
+    'any.required': '사용자 ID는 필수입니다.',
+    'number.base': '사용자 ID는 숫자여야 합니다.',
+    'number.integer': '사용자 ID는 정수여야 합니다.',
+    'number.positive': '사용자 ID는 양수여야 합니다.'
+  })
+});
+
+// 다른 사용자 적금통 목록 조회 쿼리 검증 
+export const otherUserBucketsQuerySchema = Joi.object({
+  page: Joi.number().integer().min(1).default(1).messages({
+    'number.base': 'page는 숫자여야 합니다.',
+    'number.integer': 'page는 정수여야 합니다.',
+    'number.min': 'page는 1 이상이어야 합니다.'
+  })
+});

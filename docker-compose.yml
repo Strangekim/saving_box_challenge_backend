@@ -1,5 +1,6 @@
 services:
   db:
+    restart: unless-stopped
     image: postgres:17-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -16,6 +17,7 @@ services:
       retries: 30
 
   api:
+    restart: unless-stopped
     build: ./api
     env_file: [.env]
     environment:

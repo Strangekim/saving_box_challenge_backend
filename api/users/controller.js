@@ -30,7 +30,12 @@ import {
   formatMyBucketListResponse,
   // 닉네임 변경
   checkNickname,
-  changeNickname
+  changeNickname,
+  // 프로필 조회
+  getOtherUserProfile,
+  getOtherUserBucketList,
+  getOtherUserBucketCount,
+  formatOtherUserBucketListResponse
 } from './service.js';
 
 // ============== 회원가입 컨트롤러 ==============
@@ -231,5 +236,50 @@ export const updateUserNicknameController = trycatchWrapper(async (req, res) => 
   res.status(200).json({
     message: '닉네임 변경 성공',
     nickname : response.nickname
+  });
+});
+
+// ============== 다른 사용자 정보 조회 컨트롤러 ==============
+export const getOtherUserProfileController = trycatchWrapper(async (req, res) => {
+  const targetUserId = parseInt(req.params.id);
+  const currentUserId = req.session?.userId || null; // 로그인하지 않았을 수도 있음
+  
+  // 1. 사용자 프로필 정보 조회
+  const userProfile = await getOtherUserProfile(targetUserId, currentUserId);
+  
+  // 2. 본인 조회인지 다른 사용자 조회인지에 따른 메시지 설정
+  const isSelf = currentUserId && currentUserId === targetUserId;
+  const message = isSelf ? '내 프로필 조회 성공' : '사용자 프로필 조회 성공';
+  
+  // 3. 성공 응답
+  res.status(200).json({
+    message,
+    user: userProfile
+  });
+});
+
+// ============== 다른 사용자의 적금통 목록 조회 컨트롤러 ==============
+export const getOtherUserBucketListController = trycatchWrapper(async (req, res) => {
+  const targetUserId = parseInt(req.params.id);
+  const page = parseInt(req.query.page) || 1;
+  const currentUserId = req.session?.userId || null;
+  
+  // 1. 다른 사용자의 적금통 목록 조회
+  const { buckets, user } = await getOtherUserBucketList(targetUserId, page);
+  
+  // 2. 다른 사용자의 적금통 통계 조회
+  const counts = await getOtherUserBucketCount(targetUserId);
+  
+  // 3. 응답 데이터 포맷팅
+  const response = formatOtherUserBucketListResponse(buckets, counts, page, user);
+  
+  // 4. 본인 조회인지 다른 사용자 조회인지에 따른 메시지 설정
+  const isSelf = currentUserId && currentUserId === targetUserId;
+  const message = isSelf ? '내 적금통 목록 조회 성공' : `${user.nickname}님의 공개 적금통 목록 조회 성공`;
+  
+  // 5. 성공 응답
+  res.status(200).json({
+    message,
+    ...response
   });
 });
