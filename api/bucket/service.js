@@ -363,10 +363,10 @@ export const getBucketList = async (category, page, userId = null) => {
       u.nickname as owner_nickname,
       uni.name as owner_university,
       
-      -- 소유자 캐릭터 정보
-      uc.character_item_id,
-      uc.outfit_item_id,
-      uc.hat_item_id,
+      -- 적금통 캐릭터 정보 (변경된 부분!)
+      sb.character_item_id,
+      sb.outfit_item_id,
+      sb.hat_item_id,
       char_item.name as character_name,
       outfit_item.name as outfit_name,
       hat_item.name as hat_name,
@@ -384,11 +384,10 @@ export const getBucketList = async (category, page, userId = null) => {
     LEFT JOIN users.list AS u ON sb.user_id = u.id
     LEFT JOIN users.university AS uni ON u.university_id = uni.id
     
-    -- 소유자 캐릭터 정보 조인
-    LEFT JOIN users.character AS uc ON u.id = uc.user_id
-    LEFT JOIN cosmetic_item.list AS char_item ON uc.character_item_id = char_item.id
-    LEFT JOIN cosmetic_item.list AS outfit_item ON uc.outfit_item_id = outfit_item.id
-    LEFT JOIN cosmetic_item.list AS hat_item ON uc.hat_item_id = hat_item.id
+    -- 적금통 캐릭터 정보 조인 (변경된 부분!)
+    LEFT JOIN cosmetic_item.list AS char_item ON sb.character_item_id = char_item.id
+    LEFT JOIN cosmetic_item.list AS outfit_item ON sb.outfit_item_id = outfit_item.id
+    LEFT JOIN cosmetic_item.list AS hat_item ON sb.hat_item_id = hat_item.id
     
     -- 댓글 수 조인
     LEFT JOIN (
@@ -680,15 +679,15 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
       sb.fail_payment,
       sb.last_progress_date,
       
-      -- 소유자 정보
+      -- 소유자 정보 (캐릭터 제외)
       u.id as owner_id,
       u.nickname as owner_nickname,
       uni.name as owner_university,
       
-      -- 소유자 캐릭터 정보
-      uc.character_item_id,
-      uc.outfit_item_id,
-      uc.hat_item_id,
+      -- 적금통 캐릭터 정보 (변경된 부분!)
+      sb.character_item_id,
+      sb.outfit_item_id,
+      sb.hat_item_id,
       char_item.name as character_name,
       outfit_item.name as outfit_name,
       hat_item.name as hat_name,
@@ -700,15 +699,14 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
       
     FROM saving_bucket.list AS sb
     
-    -- 소유자 정보 조인
+    -- 소유자 정보 조인 (캐릭터 제외)
     LEFT JOIN users.list AS u ON sb.user_id = u.id
     LEFT JOIN users.university AS uni ON u.university_id = uni.id
     
-    -- 소유자 캐릭터 정보 조인
-    LEFT JOIN users.character AS uc ON u.id = uc.user_id
-    LEFT JOIN cosmetic_item.list AS char_item ON uc.character_item_id = char_item.id
-    LEFT JOIN cosmetic_item.list AS outfit_item ON uc.outfit_item_id = outfit_item.id
-    LEFT JOIN cosmetic_item.list AS hat_item ON uc.hat_item_id = hat_item.id
+    -- 적금통 캐릭터 정보 조인 (변경된 부분!)
+    LEFT JOIN cosmetic_item.list AS char_item ON sb.character_item_id = char_item.id
+    LEFT JOIN cosmetic_item.list AS outfit_item ON sb.outfit_item_id = outfit_item.id
+    LEFT JOIN cosmetic_item.list AS hat_item ON sb.hat_item_id = hat_item.id
     
     -- 댓글 수 조인
     ${commentCountSubquery}
@@ -730,7 +728,7 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
   
   const bucket = bucketResult.rows[0];
   
-  // 댓글 목록 조회 (최신순)
+  // 댓글 목록 조회 (최신순) - 댓글 작성자 캐릭터는 프로필 캐릭터 사용
   const commentsQuery = `
     SELECT 
       c.id,
@@ -739,7 +737,7 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
       u.id as author_id,
       u.nickname as author_nickname,
       uni.name as author_university,
-      -- 작성자 캐릭터 정보
+      -- 작성자 프로필 캐릭터 정보 (댓글에서는 프로필 캐릭터 사용)
       uc.character_item_id,
       uc.outfit_item_id,
       uc.hat_item_id,
@@ -749,7 +747,7 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
     FROM saving_bucket.comment c
     LEFT JOIN users.list u ON c.user_id = u.id
     LEFT JOIN users.university uni ON u.university_id = uni.id
-    -- 작성자 캐릭터 정보 조인
+    -- 작성자 프로필 캐릭터 정보 조인
     LEFT JOIN users.character uc ON u.id = uc.user_id
     LEFT JOIN cosmetic_item.list char_item ON uc.character_item_id = char_item.id
     LEFT JOIN cosmetic_item.list outfit_item ON uc.outfit_item_id = outfit_item.id
@@ -775,23 +773,23 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
       nickname: comment.author_nickname,
       university: comment.author_university,
       character: {
-        character_item: {
+        character_item: comment.character_item_id ? {
           id: comment.character_item_id,
           name: comment.character_name
-        },
-        outfit_item: {
+        } : null,
+        outfit_item: comment.outfit_item_id ? {
           id: comment.outfit_item_id,
           name: comment.outfit_name
-        },
-        hat_item: {
+        } : null,
+        hat_item: comment.hat_item_id ? {
           id: comment.hat_item_id,
           name: comment.hat_name
-        }
+        } : null
       }
     }
   }));
   
-  // 적금통 데이터 포맷팅 (목록보기와 동일한 형태)
+  // 적금통 데이터 포맷팅
   const formattedBucket = {
     id: bucket.id,
     name: bucket.name,
@@ -816,24 +814,24 @@ export const getBucketDetailInfo = async (bucketId, userId = null) => {
     fail_payment: bucket.fail_payment,
     last_progress_date: bucket.last_progress_date,
     
-    // 소유자 정보 (캐릭터 포함)
+    // 소유자 정보 (캐릭터는 적금통 캐릭터로 변경!)
     owner: {
       id: bucket.owner_id,
       nickname: bucket.owner_nickname,
       university: bucket.owner_university,
       character: {
-        character_item: {
+        character_item: bucket.character_item_id ? {
           id: bucket.character_item_id,
           name: bucket.character_name
-        },
-        outfit_item: {
+        } : null,
+        outfit_item: bucket.outfit_item_id ? {
           id: bucket.outfit_item_id,
           name: bucket.outfit_name
-        },
-        hat_item: {
+        } : null,
+        hat_item: bucket.hat_item_id ? {
           id: bucket.hat_item_id,
           name: bucket.hat_name
-        }
+        } : null
       }
     }
   };
@@ -874,7 +872,10 @@ export const getBucketBasicInfo = async (bucketId) => {
       u.nickname as owner_nickname,
       uni.name as owner_university,
       
-      -- 적금통 캐릭터 정보
+      -- 적금통 캐릭터 정보 (변경된 부분!)
+      sb.character_item_id,
+      sb.outfit_item_id,
+      sb.hat_item_id,
       char_item.name as character_name,
       outfit_item.name as outfit_name,
       hat_item.name as hat_name
@@ -885,7 +886,7 @@ export const getBucketBasicInfo = async (bucketId) => {
     LEFT JOIN users.list AS u ON sb.user_id = u.id
     LEFT JOIN users.university AS uni ON u.university_id = uni.id
     
-    -- 적금통 캐릭터 정보 조인 (적금통 테이블의 아이템들)
+    -- 적금통 캐릭터 정보 조인 (변경된 부분!)
     LEFT JOIN cosmetic_item.list AS char_item ON sb.character_item_id = char_item.id
     LEFT JOIN cosmetic_item.list AS outfit_item ON sb.outfit_item_id = outfit_item.id
     LEFT JOIN cosmetic_item.list AS hat_item ON sb.hat_item_id = hat_item.id
